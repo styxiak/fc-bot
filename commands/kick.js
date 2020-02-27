@@ -1,5 +1,5 @@
 module.exports = message => {
-    const user = message.mentions.users.first()
+    const user = message.mentions.users.first();
     if (user) {
         const member = message.guild.member(user);
         if (!member) {
