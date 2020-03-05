@@ -1,10 +1,10 @@
-import { GuildMember, Message } from "discord.js";
-import { Command } from '../command';
-
+import { GuildMember, Message, RichEmbed } from "discord.js";
 import storage from 'node-persist';
 import NodePersist from 'node-persist';
 import moment, { Moment } from 'moment';
+import { AbstractCommand, OptionDefinition, UsageDefinition } from '../abstract-command';
 
+const commandLineArgs = require("command-line-args");
 
 interface Config {
     mentions: string[];
@@ -31,37 +31,179 @@ const defaultConfig: Config = {
     howLong: 5,
 };
 
-export class Mention implements Command {
+export class Mention extends AbstractCommand{
 
-    public static readonly prefix = 'mention';
-    private message: Message;
-    private subcommand: string|null = null;
+    protected readonly prefix = 'mention';
+    protected readonly acceptedCommands = [
+        'set',
+        'add',
+        'del',
+        'check',
+        'clear',
+        'config'
+    ];
+    protected readonly optionsDefinition: OptionDefinition[] = [
+        {
+            name: 'command',
+            type: String,
+            defaultOption: true,
+        },
+        {
+            name: 'help',
+            alias: 'h',
+            type: Boolean,
+            description: 'Show help'
+        },
+    ];
+    protected readonly commandOptionsDefinition = {
+        add: [
+            {
+                name: 'mention',
+                type: String,
+                defaultOption: true,
+                description: 'Nazwa wzmianki bez @',
+                typeLabel: '__rola__'
+            }
+        ],
+        del: [
+            {
+                name: 'mention',
+                type: String,
+                defaultOption: true,
+                description: 'Nazwa wzmianki bez @',
+                typeLabel: '__rola__'
+            }
+        ],
+        set: [
+            {
+                name: 'deniedRole',
+                alias: 'r',
+                type: String,
+                description: 'Nazwa roli, która zostanie przydzielona użytkownikowi, po przekroczeniu dozwolonej ilości wzmianek',
+                typeLabel: '__rola__'
+            },
+            {
+                name: 'howLong',
+                type: Number,
+                description: 'Okres czasu w jakim są zliczane wzmianki',
+                typeLabel: '__minuty__'
+
+            },
+            {
+                name: 'howMany',
+                type: Number,
+                description: 'Ilość dozwolonych wzmianek w okresie czasu',
+                typeLabel: '__howMany__'
+
+            },
+            {
+                name: 'deniedHowLong',
+                type: Number,
+                description: 'Długość kwarantanny',
+                typeLabel: '__minutes__'
+
+            },
+        ]
+    };
+    protected usageDefinition: UsageDefinition[] = [
+        {
+            header: 'This will not be shown',
+            description: 'Jeśli ktoś za dużo spamuje ~~@~~guild, to mogę Ci pomóc. Tą komendą można zdefiniować parametry kiedy nadać odpowiednią rolę użytkownikowi'
+        },
+        {
+            header: 'Lista komend',
+            content:
+                '`config ` Pokazuje aktualną konfigurację\n' +
+                '`add    ` Dodaje nową wzmiankę do listy\n' +
+                '`del    ` Usuwa wzmiankę z listy\n' +
+                '`check  ` Sprawdza nasz status\n' +
+                '`clear  ` Usuwa rolę jeśli to możliwe\n' +
+                '`set    ` Ustawia prametr[y] konfiguracyjne\n'
+        },
+        {
+            header: 'Więcej informacji',
+            content: 'Aby uzyskać więcej informacji wywołaj:\n' +
+                '```!m [komenda] -h```'
+        }
+
+    ];
+
+    protected readonly commandUsageDefinition = {
+        add: [
+            {
+                header: 'X',
+                description: 'Dodaje wzmiankę na jaką mam reagować. Wzmiankę wpisujemy bez @ na początku.'
+            },
+            {
+                header: 'Opcje',
+                optionList: this.commandOptionsDefinition.add
+            },
+            {
+                header: 'Przykład użycia',
+                content: '`!mention add guild` doda wzmiankę @guild'
+            }
+        ],
+        del: [
+            {
+                header: 'X',
+                description: 'Usuwa wzmiankę z listy. Wzmiankę wpisujemy bez @ na początku.'
+            },
+            {
+                header: 'Opcje',
+                optionList: this.commandOptionsDefinition.del
+            },
+            {
+                header: 'Przykład użycia',
+                content: '`!mention del guild` usunie wzmiankę @guild'
+            }
+        ],
+        set: [
+            {
+                header: 'X',
+                description: 'Opis set'
+            },
+            {
+                header: 'Opcje',
+                optionList: this.commandOptionsDefinition.set
+            },
+            {
+                header: 'Przykład użycia',
+                content: '`!mention set --role [no-mentions] --howMany 32` Ustawi rolę na `[no-mentions]` i ilość dozwolonych wzmianek na `3`'
+            }
+        ],
+        check: [
+            {
+                header: 'X',
+                description: 'Sprawdzi Twój status'
+            },
+
+        ],
+        clear: [
+            {
+                header: 'X',
+                description: 'Jeśli to możliwe to wyczyści informacje o przeterminowanych wzmiankach oraz usunie rolę'
+            }
+        ],
+        config: [
+            {
+                header: 'X',
+                description: 'Wyświetli obecną konfigurację'
+            }
+        ]
+
+    };
     private adminRoleName = 'FC Bot Admin';
 
     config$: Promise<Config>;
     mentions$: Promise<UserMentions>;
     // config: Config;
 
-    private acceptedCommands = [
-        'help',
-        'add',
-        'del',
-        'role',
-        'config',
-        'check',
-        'clear',
-        'howLong',
-        'howMany',
-        'deniedHowLong',
-
-    ];
-
     private storage: NodePersist.LocalStorage;
     private configKey: string = 'mentionsConfig';
     private mentionsKey: string = 'usersMentions';
 
     constructor(message: Message) {
-        this.message = message;
+        super(message);
         this.storage = storage.create();
         let initStorage$ = this
             .storage
@@ -71,16 +213,16 @@ export class Mention implements Command {
             });
         this.config$ = initStorage$
             .then((val) => {
-                console.log('config.init: ', val);
+                // console.log('config.init: ', val);
                 return this.storage.keys();
             })
             .then((keys) => {
-                console.log('config.keys: ', keys);
+                // console.log('config.keys: ', keys);
                 if (keys.indexOf(this.configKey) < 0) {
                     console.log('config is empty, set default');
                     return this.saveConfig(defaultConfig);
                 }
-                console.log('config get item');
+                // console.log('config get item');
                 return this.storage.getItem(this.configKey);
             })
             .catch((reason) => {
@@ -88,7 +230,7 @@ export class Mention implements Command {
             });
         this.config$
             .then((config:Config) => {
-                console.log('config.result: ', config);
+                // console.log('config.result: ', config);
             })
             .catch((reason) => {
                 console.error(`Error initializing config: ${reason}`);
@@ -96,20 +238,20 @@ export class Mention implements Command {
 
         this.mentions$ = initStorage$
             .then((val) => {
-                console.log('config.init: ', val);
+                // console.log('config.init: ', val);
                 return this.storage.keys();
             })
             .then((keys) => {
-                console.log('config.keys: ', keys);
+                // console.log('config.keys: ', keys);
                 if (keys.indexOf(this.mentionsKey) < 0) {
-                    console.log('mentions are empty, set default');
+                    // console.log('mentions are empty, set default');
                     let mentions = new class implements UserMentions {
                         [key: string]: UserMention[];
                     };
                     return this.saveUserMentions(mentions);
 
                 }
-                console.log('mentions get item');
+                // console.log('mentions get item');
                 return this.storage.getItem(this.mentionsKey);
             })
             .catch((reason) => {
@@ -117,75 +259,105 @@ export class Mention implements Command {
             });
         this.mentions$
             .then((mentions:UserMentions) => {
-                console.log('mentions.result: ', mentions);
+                // console.log('mentions.result: ', mentions);
                 // this.config = config;
             })
             .catch((reason) => {
                 console.error(`Error initializing mentions: ${reason}`);
             });
+        this.parseOptions();
+    }
 
+    private parseOptions() {
+        console.log('parseOptions:');
+        let messageContent = this.message.content.trim();
+        let usedPrefix = messageContent.split(' ')[0];
+        if (messageContent === `${usedPrefix}`) {
+            messageContent += ' -h';
+        }
+        let forPrase = messageContent.replace(`${usedPrefix}`, '').trim();
+        console.log(' forParse: ', forPrase);
+        let argv = forPrase.split(' ');
+        let regex = new RegExp(`/!${this.prefix}(.*)-- /`);
+        this.textMessage = messageContent.replace(regex, '').trim();
+
+        let options = commandLineArgs(
+            this.optionsDefinition, {
+                argv: argv,
+                partial: true,
+                stopAtFirstUnknown: true,
+                camelCase: true
+            });
+        this.options = options;
+        argv = options._unknown || [];
+        console.log(' options', options);
+
+        this.subcommand = options.command;
+
+        let subcommandDefinition: any[] = [];
+        switch(this.subcommand) {
+            case 'add':
+                subcommandDefinition = this.commandOptionsDefinition['add'];
+                break;
+            case 'del':
+                subcommandDefinition = this.commandOptionsDefinition['del'];
+                break;
+            case 'set':
+                subcommandDefinition = this.commandOptionsDefinition['set'];
+                break;
+            default:
+                //todo wymusić help
+        }
+
+        this.options = commandLineArgs(
+            subcommandDefinition, {
+                argv: argv,
+                partial: true,
+                stopAtFirstUnknown: true,
+                camelCase: true
+            });
+        if (options.help) {
+            this.options.help = options.help;
+        }
+        console.log(' this.options', this.options);
+        console.log(' this.textMessage', this.textMessage);
     }
 
     execute(): void {
-        let parts = this.message.content.split(' ');
-        console.log('parts', parts);
-        this.subcommand = 'help';
-        if (parts[1]) {
-            this.subcommand = parts[1];
+        console.log('execute:');
+        console.log(' this.options.help', this.options.help);
+        if (this.options.help) {
+            this.showUsage();
+            return;
         }
-        console.log('subcommand', this.subcommand);
+        //todo dodatkowe sprawdzanie kiedy pokazać help
+
+        console.log(' subcommand', this.subcommand);
         if (this.acceptedCommands.indexOf(this.subcommand) < 0) {
-            this.message.reply(`Nieznana komenda: ${Mention.prefix} ${this.subcommand}. Spróbuj !${Mention.prefix} help`);
+            this.showUsage();
             return;
         }
         switch (this.subcommand) {
-            case 'help':
-                this.message.reply("lista komend !mentions:\n" + this.acceptedCommands.join('\n'));
-                break;
             case 'add':
                 if (!this.isAdmin(this.message.member)) {
                     this.message.reply(`Aby użyc tej komendy musisz mieć rolę: ${this.adminRoleName}`);
                     break;
                 }
-                this.add(parts[2]);
+                this.add(this.options.mention);
                 break;
             case 'del':
                 if (!this.isAdmin(this.message.member)) {
                     this.message.reply(`Aby użyc tej komendy musisz mieć rolę: ${this.adminRoleName}`);
                     break;
                 }
-                this.del(parts[2]);
+                this.del(this.options.mention);
                 break;
-            case 'role':
+            case 'set':
                 if (!this.isAdmin(this.message.member)) {
                     this.message.reply(`Aby użyc tej komendy musisz mieć rolę :${this.adminRoleName}`);
                     break;
                 }
-                this.role(parts[2]);
-                break;
-            case 'howLong':
-                if (!this.isAdmin(this.message.member)) {
-                    this.message.reply(`Aby użyc tej komendy musisz mieć rolę :${this.adminRoleName}`);
-                    break;
-                }
-                let howLong = parseInt(parts[2]);
-                this.howLong(howLong);
-                break;
-            case 'howMany':
-                if (!this.isAdmin(this.message.member)) {
-                    this.message.reply(`Aby użyc tej komendy musisz mieć rolę :${this.adminRoleName}`);
-                    break;
-                }
-                let howMany = parseInt(parts[2]);
-                this.howMany(howMany);
-                break;
-            case 'deniedHowLong':
-                if (!this.isAdmin(this.message.member)) {
-                    this.message.reply(`Aby użyc tej komendy musisz mieć rolę :${this.adminRoleName}`);
-                    break;
-                }
-                let deniedHowLong = parseInt(parts[2]);
-                this.deniedHowLong(deniedHowLong);
+                this.setConfigOptions(this.options.deniedRole, this.options.howLong, this.options.howMany, this.options.deniedHowLong);
                 break;
             case 'check':
                 this.check();
@@ -439,37 +611,28 @@ export class Mention implements Command {
         });
     }
 
-    private howLong(howLong: number) {
+    private setConfigOptions(deniedRole: string, howLong: number, howMany: number, deniedHowLong: number) {
         this.config$.then((config: Config) => {
-            config.howLong = howLong;
+            if (deniedRole) {
+                config.deniedRole = deniedRole;
+            }
+            if (howLong) {
+                config.howLong = howLong;
+            }
+            if (howMany) {
+                config.howMany = howMany;
+            }
+            if (deniedHowLong) {
+                config.deniedHowLong = deniedHowLong;
+            }
             this.saveConfig(config)
                 .then((writeResult) => {
                     console.log('writeResult: ', writeResult);
-                    this.message.channel.send(`Ustawiony przedział czasu: ${howLong}`);
+                    //todo message
+                    this.message.channel.send(`Ustawione opcje: `);
                 })
         });
-    }
 
-    private howMany(howMany: number) {
-        this.config$.then((config: Config) => {
-            config.howMany = howMany;
-            this.saveConfig(config)
-                .then((writeResult) => {
-                    console.log('writeResult: ', writeResult);
-                    this.message.channel.send(`Ustawiona ilość dozwolonych wzmianek: ${howMany}`);
-                })
-        });
-    }
-
-    private deniedHowLong(deniedHowLong: number) {
-        this.config$.then((config: Config) => {
-            config.deniedHowLong = deniedHowLong;
-            this.saveConfig(config)
-                .then((writeResult) => {
-                    console.log('writeResult: ', writeResult);
-                    this.message.channel.send(`Ustawiony czas kwarantanny: ${deniedHowLong}`);
-                })
-        });
     }
 
     private isAdmin(member: GuildMember) {
@@ -484,4 +647,28 @@ export class Mention implements Command {
         return this.storage.setItem(this.mentionsKey, mentions);
     }
 
+    protected prepareUsage(): RichEmbed {
+        switch(this.subcommand) {
+            case 'add':
+                this.usageDefinition = this.commandUsageDefinition.add;
+                break;
+            case 'check':
+                this.usageDefinition = this.commandUsageDefinition.check;
+                break;
+            case 'clear':
+                this.usageDefinition = this.commandUsageDefinition.clear;
+                break;
+            case 'config':
+                this.usageDefinition = this.commandUsageDefinition.config;
+                break;
+            case 'del':
+                this.usageDefinition = this.commandUsageDefinition.del;
+                break;
+            case 'set':
+                this.usageDefinition = this.commandUsageDefinition.set;
+                break;
+
+        }
+        return super.prepareUsage();
+    }
 }

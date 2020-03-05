@@ -1,12 +1,11 @@
 import { Discord, Client, On } from '@typeit/discord';
-import { Message } from 'discord.js';
-import { Kick } from './actions/Kick';
-import { Pong } from './actions/Pong';
-import { Mention } from './actions/Mention';
+import { Message, RichEmbed } from 'discord.js';
+import { Kick } from './actions/kick';
+import { Pong } from './actions/pong';
+import { Mention } from './actions/mention';
 
-import { config } from 'dotenv';
-
-config();
+import { Color } from './utils/color';
+import { Embed } from './actions/embed';
 
 @Discord
 export abstract class FCBot {
@@ -37,7 +36,6 @@ export abstract class FCBot {
 
             const cmd = message.content.split(' ')[0].replace(this.prefix, "").toLowerCase();
             console.log(cmd);
-            console.log(Mention.prefix);
             switch (cmd) {
                 case 'kick':
                     command = new Kick(message);
@@ -50,8 +48,11 @@ export abstract class FCBot {
                 case 'mention':
                 case 'mentions':
                 case 'm':
-                case Mention.prefix:
                     mentionCommand.execute();
+                    break;
+                case "embed":
+                    command = new Embed(message);
+                    command.execute();
                     break;
                 default:
                     message.reply(this.commandNotFoundMessage);
@@ -63,7 +64,16 @@ export abstract class FCBot {
         //inne wiadomości
         mentionCommand.watch();
 
+    }
 
+    static embed() : RichEmbed {
+        return new RichEmbed()
+            .setURL('https://github.com/styxiak/fc-bot')
+            .setAuthor('D-O', FCBot.client.user.avatarURL)
+            .setThumbnail('http://chuchmala.pl/static/bio_hazard.png')
+            .setTimestamp()
+            .setColor(Color.DEFAULT)
+            .setFooter('D-O -.. -....- ---', 'http://chuchmala.pl/static/final-countdown/fc-icon.png');
     }
 
 }

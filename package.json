@@ -5,15 +5,17 @@
     "scripts": {
         "prebuild": "rm build/* -Rf",
         "build": " tsc ",
-        "postbuild": "cp package.json build/package.json && cp .env build/.env && cd build && npm install --only=production",
+        "postbuild": "cp package.json build/package.json && cp .env* build/ && cd build && npm install --only=production",
         "start": "node main.js",
-        "dev": "nodemon main.js"
+        "start-dev": "NODE_ENV=dev node main.js",
+        "dev": "NODE_ENV=dev nodemon main.js"
     },
     "dependencies": {
         "@typeit/discord": "^1.0.3",
         "@types/nconf": "^0.10.0",
         "@types/node": "^13.7.7",
         "@types/node-persist": "^3.0.0",
+        "command-line-args": "^5.1.1",
         "discord.js": "^11.6.0",
         "dotenv": "^8.2.0",
         "moment": "^2.24.0",

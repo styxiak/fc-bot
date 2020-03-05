@@ -10,4 +10,4 @@ services:
       - ./:/home/node/app
     expose:
       - "8081"
-    command: "npm start"
+    command: "npm run-script start-dev"
