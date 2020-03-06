@@ -52,7 +52,7 @@ export class Mention extends AbstractCommand{
             name: 'help',
             alias: 'h',
             type: Boolean,
-            description: 'Show help'
+            description: 'Pomoc'
         },
     ];
     protected readonly commandOptionsDefinition = {
@@ -268,6 +268,7 @@ export class Mention extends AbstractCommand{
         this.parseOptions();
     }
 
+    //todo rozbić na dwie jeśli są tylko parametry lub jest subkomnedda i przenieść do abstract
     private parseOptions() {
         console.log('parseOptions:');
         let messageContent = this.message.content.trim();

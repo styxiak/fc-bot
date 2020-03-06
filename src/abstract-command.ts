@@ -1,6 +1,7 @@
 import { Command } from './command';
 import { Message } from "discord.js";
 import { FCBot } from './FCBot';
+import { Color } from './utils/color';
 
 
 export interface OptionDefinition {
@@ -84,5 +85,13 @@ export abstract class AbstractCommand implements Command {
         });
 
         return embed;
+    }
+
+    error(message: string) {
+        const embed = FCBot.embed()
+            .setDescription(message)
+            .setColor(Color.RED)
+        ;
+        this.message.channel.send(embed);
     }
 }

@@ -6,6 +6,9 @@ import { Mention } from './actions/mention';
 
 import { Color } from './utils/color';
 import { Embed } from './actions/embed';
+import { Help } from './actions/help';
+import { Abs } from './actions/abs';
+import { Stats } from './actions/stats';
 
 @Discord
 export abstract class FCBot {
@@ -16,8 +19,6 @@ export abstract class FCBot {
 
     static start() {
         this.client = new Client();
-        // In the login method, you must specify the glob string to load your classes (for the framework).
-        // In this case that's not necessary because the entry point of your application is this file.
         this.client.login(
             process.env.BOT_TOKEN as string,
             `${__dirname}/*Discord.ts` // glob string to load the classes
@@ -26,7 +27,6 @@ export abstract class FCBot {
 
     @On("message")
     async onMessage(message: Message, client: Client) {
-        // Your logic...
         if (FCBot.client.user.id === message.author.id) {
             return;
         }
@@ -35,7 +35,7 @@ export abstract class FCBot {
             let command;
 
             const cmd = message.content.split(' ')[0].replace(this.prefix, "").toLowerCase();
-            console.log(cmd);
+            console.log(`command in inMessage: ${cmd}`);
             switch (cmd) {
                 case 'kick':
                     command = new Kick(message);
@@ -52,6 +52,18 @@ export abstract class FCBot {
                     break;
                 case "embed":
                     command = new Embed(message);
+                    command.execute();
+                    break;
+                case "abs":
+                    command = new Abs(message);
+                    command.execute();
+                    break;
+                case "stats":
+                    command = new Stats(message);
+                    command.execute();
+                    break;
+                case "help":
+                    command = new Help(message);
                     command.execute();
                     break;
                 default:

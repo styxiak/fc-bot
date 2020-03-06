@@ -67,6 +67,7 @@ export class Embed extends AbstractCommand {
 
     }
 
+    //todo rozbić na dwie jeśli są tylko parametry lub jest subkomnedda i przenieść do abstract
     private parseOptions() {
         console.log('parseOptions:');
         let messageContent = this.message.content.trim();
@@ -76,7 +77,7 @@ export class Embed extends AbstractCommand {
         let forPrase = messageContent.replace(`!${this.prefix}`, '').trim();
         console.log(' forParse: ', forPrase);
         let argv = forPrase.split(' ');
-        let regex = /!embed(.*)-- /;
+        let regex = new RegExp(`!${this.prefix}(.*)-- `);
         this.textMessage = messageContent.replace(regex, '').trim();
         this.options = commandLineArgs(
             this.optionsDefinition, {
