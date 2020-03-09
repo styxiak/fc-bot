@@ -4,6 +4,7 @@ import { Connection, createConnection, MysqlError } from 'mysql';
 import moment, { Moment } from 'moment';
 import { FCBot } from '../FCBot';
 import { Color } from '../utils/color';
+import { changeEmptyToVal } from '../utils/util.functions';
 
 const commandLineArgs = require("command-line-args");
 const HRNumbers = require('human-readable-numbers');
@@ -199,16 +200,16 @@ export class Stats extends AbstractCommand {
 
         let queryMin = `SELECT name, galactic_power, character_galactic_power, ship_galactic_power, MAX (last_updated) FROM \`do-api\`.player_data group by ally_code order by galactic_power asc limit ?`;
 
-        let gpProgreess = 'select t1.name, min_gp, max_gp, ((max_gp-min_gp)/min_gp*100) as progress ' +
+        let gpProgreess = 'select t1.name, min_gp, max_gp,  (max_gp-min_gp)/min_gp*100 as progress ' +
             'from ' +
             '(select ' +
-            'name, ally_code, min(galactic_power) as min_gp ' +
+            'ANY_VALUE(name) as name, ally_code, min(galactic_power) as min_gp ' +
             'from player_data ' +
             'where last_updated > ? ' +
             'group by ally_code) as t1 ' +
             'JOIN ' +
             '(select ' +
-            'name, ally_code, max(galactic_power) as max_gp ' +
+            'ANY_VALUE(name) as name, ally_code, max(galactic_power) as max_gp ' +
             'from player_data ' +
             'where last_updated > ? ' +
             'group by ally_code) as t2 ' +
@@ -266,7 +267,10 @@ export class Stats extends AbstractCommand {
                 results.progressMin.forEach((val:any) => {
                     minGpProgress += `**${val.name}** - ${Math.round((val.progress + Number.EPSILON) * 100) /100}\n`
                 });
-
+                maxGpValue = changeEmptyToVal(maxGpValue, 'Brak danych');
+                minGpValue = changeEmptyToVal(minGpValue, 'Brak danych');
+                maxGpProgress = changeEmptyToVal(maxGpProgress, 'Brak danych');
+                minGpProgress = changeEmptyToVal(minGpProgress, 'Brak danych');
                 const embed = FCBot.embed()
                     .setColor(Color.BLUE)
                     .addField('**Najwyższe GP**', `${maxGpValue}`, true)
