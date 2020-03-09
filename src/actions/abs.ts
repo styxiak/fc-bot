@@ -71,7 +71,12 @@ export class Abs extends AbstractCommand {
             }
         ],
         del: [
-
+            {
+                name: 'id',
+                type: Number,
+                description: 'Id wpisu.',
+                defaultOption: true
+            }
         ],
         clear: [
 
@@ -116,8 +121,26 @@ export class Abs extends AbstractCommand {
                     '`!abs add -f 2020-05-01 Nie wiem kiedy wrócę` doda nieobecność bez ustalonej daty końcowej'
             }
         ],
-        del: [],
-        clear: [],
+        del: [
+            {
+                header: 'X',
+                description: 'Usuwa nieobecność'
+            },
+            {
+                header: 'Opcje',
+                optionList: this.commandOptionsDefinition.del
+            },
+            {
+                header: 'Przykład użycia',
+                content: '`!abs del --id 1` dUsunie nieobecność o id 1\n'
+            }
+        ],
+        clear: [
+            {
+                header: 'X',
+                description: 'Usuwa przeterminowane nieobecności'
+            },
+        ],
         list: [
             {
                 header: 'X',
@@ -192,6 +215,9 @@ export class Abs extends AbstractCommand {
             case 'list':
                 subcommandDefinition = this.commandOptionsDefinition['list'];
                 break;
+            case 'clear':
+                subcommandDefinition = this.commandOptionsDefinition['clear'];
+                break;
             default:
             //todo wymusić help
         }
@@ -235,6 +261,13 @@ export class Abs extends AbstractCommand {
                     this.list();
                 }
                 break;
+            case 'del':
+
+                this.del(this.options.id);
+                break;
+            case 'clear':
+                this.clear();
+                break;
         }
     }
 
@@ -249,11 +282,11 @@ export class Abs extends AbstractCommand {
         let reason = this.options._unknown.join(' ');
         const embed = FCBot.embed();
 
-        embed.addField('x', `dodaję: \`${nick}\` \`${from.format()}\` \`${to.format()}\` \`${reason}\``);
+        embed.setDescription(`Dodaję: **${nick}** od: **${from.format('YYYY-MM-DD')}** do: **${to.format('YYYY-MM-DD')}** - ${reason}`);
         this.message.channel.send(embed);
 
         let query = 'INSERT INTO absences (`name`, `from`, `to`, `reason`, `creator`) values (?,?,?,?,?)';
-        this.mysqlConn.query(query, [nick, from.format(), to.format(), reason, this.message.member.user.username])
+        this.mysqlConn.query(query, [nick, from.format('YYYY-MM-DD'), to.format('YYYY-MM-DD'), reason, this.message.member.user.username])
             .on ('result', (result) => {
                 console.log(result);
             })
@@ -267,12 +300,13 @@ export class Abs extends AbstractCommand {
         if (current) {
             query = 'SELECT * FROM absences where (`from` <= now() OR `from` IS NULL) AND (`to` >= NOW() OR `to` IS NULL)';
         }
-        let messageData = [['**Nick**', '**Od**', '**Do**', '**Powód**']];
+        let messageData = [['Id', 'Nick', 'Od', 'Do', 'Powód']];
 
         this.mysqlConn.query(query)
             .on('result', (abs: any) => {
                 console.log(abs);
                 let row = [
+                    abs.id,
                     abs.name,
                     moment(abs.from).format('YYYY-MM-DD'),
                     moment(abs.to).format('YYYY-MM-DD'),
@@ -288,10 +322,50 @@ export class Abs extends AbstractCommand {
                 let message = table(messageData);
                 embed.setDescription(`\`\`\`${message}\`\`\``);
                 this.message.channel.send(embed);
-
             });
     }
 
+    del(id: number) {
+        let query = 'DELETE from `do-api`.absences where `id` = ?;';
+        let deleted = 0;
+        this.mysqlConn.query(query, [id])
+            .on('result', (result: any) => {
+                console.log(result);
+                deleted = result.affectedRows;
+            })
+            .on('error', (err: MysqlError) => {
+                this.error(err.message);
+            })
+            .on('end', () => {
+                const embed = FCBot.embed();
+                let message = `Usunięto \`${deleted}\` wiersz`;
+                if(0 == deleted) {
+                    message = 'Nie usunięto żadnego wiersza';
+                }
+                embed.setDescription(`${message}`);
+                this.message.channel.send(embed);
+            });
+    }
+
+    clear() {
+        let query = 'DELETE from `do-api`.absences where `to` < now();';
+        let deleted = 0;
+        this.mysqlConn.query(query)
+            .on('result', (result: any) => {
+                console.log(result);
+                deleted = result.affectedRows;
+            })
+            .on('error', (err: MysqlError) => {
+                this.error(err.message);
+            })
+            .on('end', () => {
+                const embed = FCBot.embed();
+                let message = `Usunięto \`${deleted}\` wierszy`;
+                embed.setDescription(`${message}`);
+                this.message.channel.send(embed);
+            });
+        
+    }
     protected prepareUsage(): RichEmbed {
         switch(this.subcommand) {
             case 'add':
