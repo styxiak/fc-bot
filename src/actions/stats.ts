@@ -60,16 +60,7 @@ export class Stats extends AbstractCommand {
 
     protected mysqlConn: Connection;
 
-    constructor(message: Message) {
-        super(message);
-        let connectionUri = {
-            host: process.env.MYSQL_HOST,
-            user: process.env.MYSQL_USER,
-            password: process.env.MYSQL_PASS,
-            database: process.env.MYSQL_DB,
-            multipleStatements: true
-        };
-        this.mysqlConn = createConnection(connectionUri);
+    setUpMySQLConnection() {
 
         this.mysqlConn.connect((err) => {
             if (err) {
@@ -79,8 +70,38 @@ export class Stats extends AbstractCommand {
             console.log('connected as id ', this.mysqlConn.threadId);
         });
 
+        this.mysqlConn.on("close", (err) => {
+            console.log(`SQL CONNECTION CLOSED: ${err}`);
+        });
+
+    }
+
+    constructor(message: Message) {
+        super(message);
+
+        let connectionUri = {
+            host: process.env.MYSQL_HOST,
+            user: process.env.MYSQL_USER,
+            password: process.env.MYSQL_PASS,
+            database: process.env.MYSQL_DB,
+            multipleStatements: true
+        };
+        this.mysqlConn = createConnection(connectionUri);
+
+        this.setUpMySQLConnection();
+        this.handleDisconnect();
         this.parseOptions();
     }
+
+    handleDisconnect() {
+        this.mysqlConn.on('error', (err) => {
+            console.log('Re-connecting lost connection');
+            this.mysqlConn.destroy();
+            this.setUpMySQLConnection();
+            this.handleDisconnect();
+        });
+    }
+
     //todo rozbić na dwie jeśli są tylko parametry lub jest subkomnedda i przenieść do abstract
     private parseOptions() {
         console.log('parseOptions:');
@@ -231,7 +252,7 @@ export class Stats extends AbstractCommand {
         let dateString = d.format('YYYY-MM-DD hh:mm:ss');
         this.mysqlConn.query(`${queryMax}; ${queryMin}; ${gpProgressMax}; ${gpProgressMin}`, [count, count, dateString, dateString, count, dateString, dateString, count])
             .on('result', (result, index) => {
-                // console.log(' multiple results: ', index, result);
+                console.log(' multiple results: ', index, result);
                 switch (index) {
                     case 0:
                         results.max.push(result);

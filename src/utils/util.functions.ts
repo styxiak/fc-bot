@@ -1,5 +1,6 @@
 
 export function changeEmptyToVal(value: string, result = ' '): string {
+    console.log(value);
     if (!value) {
         return result;
     }
