@@ -9,6 +9,7 @@ import { Embed } from './actions/embed';
 import { Help } from './actions/help';
 import { Abs } from './actions/abs';
 import { Stats } from './actions/stats';
+import { Covid } from './actions/covid';
 
 @Discord
 export abstract class FCBot {
@@ -60,6 +61,10 @@ export abstract class FCBot {
                     break;
                 case "stats":
                     command = new Stats(message);
+                    command.execute();
+                    break;
+                case "covid":
+                    command = new Covid(message);
                     command.execute();
                     break;
                 case "help":

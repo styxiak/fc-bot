@@ -60,22 +60,6 @@ export class Stats extends AbstractCommand {
 
     protected mysqlConn: Connection;
 
-    setUpMySQLConnection() {
-
-        this.mysqlConn.connect((err) => {
-            if (err) {
-                console.error('error connecting: ' + err.stack);
-                return;
-            }
-            console.log('connected as id ', this.mysqlConn.threadId);
-        });
-
-        this.mysqlConn.on("close", (err) => {
-            console.log(`SQL CONNECTION CLOSED: ${err}`);
-        });
-
-    }
-
     constructor(message: Message) {
         super(message);
 
@@ -91,6 +75,22 @@ export class Stats extends AbstractCommand {
         this.setUpMySQLConnection();
         this.handleDisconnect();
         this.parseOptions();
+    }
+
+    setUpMySQLConnection() {
+
+        this.mysqlConn.connect((err) => {
+            if (err) {
+                console.error('error connecting: ' + err.stack);
+                return;
+            }
+            console.log('connected as id ', this.mysqlConn.threadId);
+        });
+
+        this.mysqlConn.on("close", (err) => {
+            console.log(`SQL CONNECTION CLOSED: ${err}`);
+        });
+
     }
 
     handleDisconnect() {
