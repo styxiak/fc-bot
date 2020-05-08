@@ -36,6 +36,13 @@ export class Stats extends AbstractCommand {
             typeLabel: '__okres czasu__'
         },
         {
+            name: 'count',
+            type: Number,
+            alias: 'c',
+            description: 'Ile ludzi pokazać, domyślnie 3',
+            typeLabel: '__ilość__'
+        },
+        {
             name: 'help',
             type: Boolean,
             alias: 'h',
@@ -175,6 +182,11 @@ export class Stats extends AbstractCommand {
             return;
         }
 
+        if (!this.options.count) {
+            this.options.count = 3;
+        }
+
+
         switch (this.options.type) {
             case 'gp':
                 this.gpStats();
@@ -209,17 +221,13 @@ export class Stats extends AbstractCommand {
     }
 
     guildStats() {
-        //najwyższe gp
-        this.getMaxGP(3);
-        //najszybszy rozwój --ostatni tydzień, miesiąc rok
-        //Najwolniejszy rozwój
-        //najniższe GP
+        this.getMaxGP(this.options.count);
     }
     getMaxGP(count: number) {
 
-        let queryMax = `SELECT name, galactic_power, character_galactic_power, ship_galactic_power, MAX (last_updated) FROM \`do-api\`.player_data group by ally_code order by galactic_power desc limit ?`;
+        let queryMax = `SELECT ANY_VALUE(name) as name, ANY_VALUE(galactic_power) as galactic_power, ANY_VALUE(character_galactic_power) as character_galactic_power, ANY_VALUE(ship_galactic_power) as ship_galactic_power, MAX (last_updated) FROM \`do-api\`.player_data group by ally_code order by galactic_power desc limit ?`;
 
-        let queryMin = `SELECT name, galactic_power, character_galactic_power, ship_galactic_power, MAX (last_updated) FROM \`do-api\`.player_data group by ally_code order by galactic_power asc limit ?`;
+        let queryMin = `SELECT ANY_VALUE(name) as name, ANY_VALUE(galactic_power) as galactic_power, ANY_VALUE(character_galactic_power) as character_galactic_power, ANY_VALUE(ship_galactic_power) as ship_galactic_power, MAX (last_updated) FROM \`do-api\`.player_data group by ally_code order by galactic_power asc limit ?`;
 
         let gpProgreess = 'select t1.name, min_gp, max_gp,  (max_gp-min_gp)/min_gp*100 as progress ' +
             'from ' +
@@ -250,8 +258,12 @@ export class Stats extends AbstractCommand {
         d.subtract('1', this.options.period);
         console.log('date', d);
         let dateString = d.format('YYYY-MM-DD hh:mm:ss');
-        this.mysqlConn.query(`${queryMax}; ${queryMin}; ${gpProgressMax}; ${gpProgressMin}`, [count, count, dateString, dateString, count, dateString, dateString, count])
+        let sql = this.mysqlConn.format(`${queryMax}; ${queryMin}; ${gpProgressMax}; ${gpProgressMin}`, [count, count, dateString, dateString, count, dateString, dateString, count]);
+        console.log(sql);
+        this.mysqlConn.query(sql)
+        // this.mysqlConn.query(`${queryMax}; ${queryMin}; ${gpProgressMax}; ${gpProgressMin}`, [count, count, dateString, dateString, count, dateString, dateString, count])
             .on('result', (result, index) => {
+                this.mysqlConn.pause();
                 console.log(' multiple results: ', index, result);
                 switch (index) {
                     case 0:
@@ -267,8 +279,10 @@ export class Stats extends AbstractCommand {
                         results.progressMin.push(result);
                         break;
                 }
+                this.mysqlConn.resume();
             })
             .on('error', (err: MysqlError) => {
+                console.log(err);
                 this.error(err.message);
             })
             .on('end', () => {
