@@ -1,6 +1,6 @@
 import { AbstractCommand, OptionDefinition, UsageDefinition } from '../abstract-command';
 import { Message } from 'discord.js';
-import { Connection, createConnection, MysqlError } from 'mysql';
+import { Connection, createConnection, FieldInfo, MysqlError } from 'mysql';
 import moment, { Moment } from 'moment';
 import { FCBot } from '../FCBot';
 import { Color } from '../utils/color';
@@ -225,11 +225,11 @@ export class Stats extends AbstractCommand {
     }
     getMaxGP(count: number) {
 
-        let queryMax = `SELECT ANY_VALUE(name) as name, ANY_VALUE(galactic_power) as galactic_power, ANY_VALUE(character_galactic_power) as character_galactic_power, ANY_VALUE(ship_galactic_power) as ship_galactic_power, MAX (last_updated) FROM \`do-api\`.player_data group by ally_code order by galactic_power desc limit ?`;
+        let query = `SELECT ANY_VALUE(name) as name, ANY_VALUE(galactic_power) as galactic_power, ANY_VALUE(character_galactic_power) as character_galactic_power, ANY_VALUE(ship_galactic_power) as ship_galactic_power, MAX(last_updated) FROM \`do-api\`.player_data group by ally_code`;
+        let queryMax = query + ' order by galactic_power desc limit ?'
+        let queryMin = query + ' order by galactic_power asc limit ?'
 
-        let queryMin = `SELECT ANY_VALUE(name) as name, ANY_VALUE(galactic_power) as galactic_power, ANY_VALUE(character_galactic_power) as character_galactic_power, ANY_VALUE(ship_galactic_power) as ship_galactic_power, MAX (last_updated) FROM \`do-api\`.player_data group by ally_code order by galactic_power asc limit ?`;
-
-        let gpProgreess = 'select t1.name, min_gp, max_gp,  (max_gp-min_gp)/min_gp*100 as progress ' +
+        let gpProgress = 'select t1.name, min_gp, max_gp,  (max_gp-min_gp)/min_gp*100 as progress ' +
             'from ' +
             '(select ' +
             'ANY_VALUE(name) as name, ally_code, min(galactic_power) as min_gp ' +
@@ -244,9 +244,23 @@ export class Stats extends AbstractCommand {
             'group by ally_code) as t2 ' +
             'on t1.ally_code = t2.ally_code ' +
             '';
-        let gpProgressMax = gpProgreess + ' order by progress desc limit ?';
-        let gpProgressMin = gpProgreess + ' order by progress asc limit ?';
-        console.log(gpProgressMin);
+        gpProgress = 'select distinct\n' +
+            '\tp.name,\n' +
+            '    min_gp,\n' +
+            '    max_gp,\n' +
+            '    (max_gp-min_gp)/min_gp*100 as progress\n' +
+            'from player_data as p\n' +
+            'JOIN (\n' +
+            'select ally_code, min(galactic_power) as min_gp \n' +
+            ' from player_data where last_updated > ? group by ally_code\n' +
+            ') as t1 on t1.ally_code = p.ally_code\n' +
+            'JOIN (\n' +
+            'select ally_code, max(galactic_power) as max_gp \n' +
+            ' from player_data where last_updated > ? group by ally_code\n' +
+            ') as t2 on t2.ally_code = p.ally_code' +
+            '';
+        let gpProgressMax = gpProgress + ' order by progress desc limit ?';
+        let gpProgressMin = gpProgress + ' order by progress asc limit ?';
         let results: any = {
             min: [],
             max: [],
@@ -256,66 +270,83 @@ export class Stats extends AbstractCommand {
         //todo sprawdzić datę
         let d = moment();
         d.subtract('1', this.options.period);
-        console.log('date', d);
         let dateString = d.format('YYYY-MM-DD hh:mm:ss');
-        let sql = this.mysqlConn.format(`${queryMax}; ${queryMin}; ${gpProgressMax}; ${gpProgressMin}`, [count, count, dateString, dateString, count, dateString, dateString, count]);
-        console.log(sql);
-        this.mysqlConn.query(sql)
-        // this.mysqlConn.query(`${queryMax}; ${queryMin}; ${gpProgressMax}; ${gpProgressMin}`, [count, count, dateString, dateString, count, dateString, dateString, count])
-            .on('result', (result, index) => {
-                this.mysqlConn.pause();
-                console.log(' multiple results: ', index, result);
-                switch (index) {
-                    case 0:
-                        results.max.push(result);
-                        break;
-                    case 1:
-                        results.min.push(result);
-                        break;
-                    case 2:
-                        results.progressMax.push(result);
-                        break;
-                    case 3:
-                        results.progressMin.push(result);
-                        break;
-                }
-                this.mysqlConn.resume();
+
+
+        this.mysqlConn.query(queryMax, [count])
+            .on('result', (result) => {
+                console.log(result);
+                results.max.push(result);
             })
             .on('error', (err: MysqlError) => {
-                console.log(err);
                 this.error(err.message);
             })
             .on('end', () => {
-                let maxGpValue = '';
-                results.max.forEach((val:any) => {
-                    maxGpValue += `**${val.name}** - ${HRNumbers.toHumanString(val.galactic_power)}\n`
+                this.mysqlConn.query(queryMin, [count])
+                    .on('result', (result) => {
+                        console.log(result);
+                        results.min.push(result);
+                    })
+                    .on('error', (err: MysqlError) => {
+                        this.error(err.message);
+                    }).on('end', () => {
+                    this.mysqlConn.query(gpProgressMax, [dateString, dateString, count])
+                        .on('result', (result) => {
+                            console.log(result);
+                            results.progressMax.push(result);
+                        })
+                        .on('error', (err: MysqlError) => {
+                            console.log(err);
+                            this.error(err.message);
+                        }).on('end', () => {
+                        this.mysqlConn.query(gpProgressMin, [dateString, dateString, count])
+                            .on('result', (result) => {
+                                console.log(result);
+                                results.progressMin.push(result);
+                            })
+                            .on('error', (err: MysqlError) => {
+                                console.log(err);
+                                this.error(err.message);
+                            }).on('end', () => {
+                            this.sendData(results);
+                        });
+                    });
                 });
-                let minGpValue = '';
-                results.min.forEach((val: any) => {
-                    minGpValue += `**${val.name}** - ${HRNumbers.toHumanString(val.galactic_power)}\n`
-                });
-                let maxGpProgress = '';
-                results.progressMax.forEach((val:any) => {
-                    maxGpProgress += `**${val.name}** - ${Math.round((val.progress + Number.EPSILON) * 100) / 100}\n`
-                });
-                let minGpProgress = '';
-                results.progressMin.forEach((val:any) => {
-                    minGpProgress += `**${val.name}** - ${Math.round((val.progress + Number.EPSILON) * 100) /100}\n`
-                });
-                maxGpValue = changeEmptyToVal(maxGpValue, 'Brak danych');
-                minGpValue = changeEmptyToVal(minGpValue, 'Brak danych');
-                maxGpProgress = changeEmptyToVal(maxGpProgress, 'Brak danych');
-                minGpProgress = changeEmptyToVal(minGpProgress, 'Brak danych');
-                const embed = FCBot.embed()
-                    .setColor(Color.BLUE)
-                    .addField('**Najwyższe GP**', `${maxGpValue}`, true)
-                    .addField('**Najniższe GP**', `${minGpValue}`, true)
-                    .addBlankField()
-                    .addField('**Najwyższy przyrost GP**', `${maxGpProgress}`, true)
-                    .addField('**Najniższy przyrost GP**', `${minGpProgress}`, true)
-                ;
-                this.message.channel.send(embed);
-            })
-        ;
+            });
+
     }
+
+    sendData(results: any) {
+        console.log('SENDING');
+        let maxGpValue = '';
+        results.max.forEach((val:any) => {
+            maxGpValue += `**${val.name}** - ${HRNumbers.toHumanString(val.galactic_power)}\n`
+        });
+        let minGpValue = '';
+        results.min.forEach((val: any) => {
+            minGpValue += `**${val.name}** - ${HRNumbers.toHumanString(val.galactic_power)}\n`
+        });
+        let maxGpProgress = '';
+        results.progressMax.forEach((val:any) => {
+            maxGpProgress += `**${val.name}** - ${Math.round((val.progress + Number.EPSILON) * 100) / 100}%\n`
+        });
+        let minGpProgress = '';
+        results.progressMin.forEach((val:any) => {
+            minGpProgress += `**${val.name}** - ${Math.round((val.progress + Number.EPSILON) * 100) /100}%\n`
+        });
+        maxGpValue = changeEmptyToVal(maxGpValue, 'Brak danych');
+        minGpValue = changeEmptyToVal(minGpValue, 'Brak danych');
+        maxGpProgress = changeEmptyToVal(maxGpProgress, 'Brak danych');
+        minGpProgress = changeEmptyToVal(minGpProgress, 'Brak danych');
+        const embed = FCBot.embed()
+            .setColor(Color.BLUE)
+            .addField('**Najwyższe GP**', `${maxGpValue}`, true)
+            .addField('**Najniższe GP**', `${minGpValue}`, true)
+            .addBlankField()
+            .addField('**Najwyższy przyrost GP**', `${maxGpProgress}`, true)
+            .addField('**Najniższy przyrost GP**', `${minGpProgress}`, true)
+        ;
+        this.message.channel.send(embed);
+    }
+
 }
