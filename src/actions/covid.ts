@@ -2,10 +2,12 @@ import { AbstractCommand, OptionDefinition, UsageDefinition } from '../abstract-
 import { Message } from 'discord.js';
 import { FCBot } from '../FCBot';
 import { Color } from '../utils/color';
+import { NovelCovid } from 'novelcovid';
 
 const commandLineArgs = require("command-line-args");
 const HRNumbers = require('human-readable-numbers');
-const novelcovid = require('novelcovid');
+
+let novelCovid = new NovelCovid();
 
 export class Covid extends AbstractCommand {
 
@@ -81,7 +83,7 @@ export class Covid extends AbstractCommand {
     }
 
     all() {
-        novelcovid.getAll()
+        novelCovid.all()
             .then((data: any) => {
                 console.log(data);
                 this.sendEmbedAll(data);
@@ -93,7 +95,7 @@ export class Covid extends AbstractCommand {
     }
 
     country(country: string) {
-        novelcovid.getCountry(country)
+        novelCovid.countries(country)
             .then((data: any) => {
                 console.log(data);
                 this.sendEmbed(data);
