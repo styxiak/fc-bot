@@ -1,5 +1,5 @@
 import { AbstractCommand, OptionDefinition, UsageDefinition } from '../abstract-command';
-import { Message, RichEmbed } from 'discord.js';
+import {GuildMember, Message, MessageEmbed} from 'discord.js';
 import { Connection, createConnection, MysqlError } from 'mysql';
 import { FCBot } from '../FCBot';
 import moment from 'moment';
@@ -272,7 +272,8 @@ export class Abs extends AbstractCommand {
     }
 
     add() {
-        let nick = this.message.member.user.username;
+        let member = this.message.member as GuildMember;
+        let nick = member.user.username;
         //todo opgraniczyć do roli - przenieść sprawdzanie roli z mentions do FCBOT
         if (this.options.nick) {
             nick = this.options.nick;
@@ -286,7 +287,7 @@ export class Abs extends AbstractCommand {
         this.message.channel.send(embed);
 
         let query = 'INSERT INTO absences (`name`, `from`, `to`, `reason`, `creator`) values (?,?,?,?,?)';
-        this.mysqlConn.query(query, [nick, from.format('YYYY-MM-DD'), to.format('YYYY-MM-DD'), reason, this.message.member.user.username])
+        this.mysqlConn.query(query, [nick, from.format('YYYY-MM-DD'), to.format('YYYY-MM-DD'), reason, member.user.username])
             .on ('result', (result) => {
                 console.log(result);
             })
@@ -366,7 +367,7 @@ export class Abs extends AbstractCommand {
             });
         
     }
-    protected prepareUsage(): RichEmbed {
+    protected prepareUsage(): MessageEmbed {
         switch(this.subcommand) {
             case 'add':
                 this.usageDefinition = this.commandUsageDefinition.add;

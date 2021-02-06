@@ -1,7 +1,7 @@
 import { Message } from 'discord.js';
 import { Command } from '../command';
 
-export class Kick implements Command{
+export class Kick implements Command {
 
     private message: Message;
 
@@ -16,7 +16,7 @@ export class Kick implements Command{
             return;
         }
 
-        const member = this.message.guild.member(user);
+        const member = this.message.guild?.member(user);
         if (!member) {
             this.message.reply(`Brakuje informacji, kogo chcesz wyrzucić z serwera?`)
             return;

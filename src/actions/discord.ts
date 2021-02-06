@@ -1,0 +1,283 @@
+import {AbstractCommand, OptionDefinition, UsageDefinition} from "../abstract-command";
+import {Channel, Collection, Guild, GuildMember, Message, MessageEmbed, Snowflake} from "discord.js";
+import {Connection, createConnection, MysqlError} from "mysql";
+import {FCBot} from "../FCBot";
+
+const commandLineArgs = require("command-line-args");
+const emojiStrip = require("emoji-strip");
+
+export const ROLE_GUILD = '501311378858967051';
+export const ROLE_MEMBER = '497141675181735946';
+export const ROLE_OFFICER = '568158969248612353';
+
+
+export class Discord extends AbstractCommand {
+
+    protected prefix = 'discord';
+    protected optionsDefinition: OptionDefinition[] = [
+        {
+            name: 'type',
+            type: String,
+            alias: 'c',
+            description: 'Type',
+            typeLabel: '__type__',
+            defaultOption: true,
+        },
+        {
+            name: 'help',
+            type: Boolean,
+            alias: 'h',
+            description: 'Pomoc'
+        }
+
+    ]
+
+    protected usageDefinition: UsageDefinition[] = [
+        {
+            header: 'x',
+            description: "Porządki na discordzie"
+        },
+        {
+            header: "Opcje",
+            optionList: this.optionsDefinition
+        }
+    ];
+
+    protected mysqlConn: Connection;
+    private dbUsers: any[] = [];
+
+    constructor(message: Message) {
+        super(message);
+        this.parseOptions();
+        let connectionUri = {
+            host: process.env.MYSQL_HOST,
+            user: process.env.MYSQL_USER,
+            password: process.env.MYSQL_PASS,
+            database: process.env.MYSQL_DB,
+            multipleStatements: true
+        };
+        this.mysqlConn = createConnection(connectionUri);
+        this.mysqlConn.connect((err) => {
+            if (err) {
+                console.error('error connecting: ' + err.stack);
+                return;
+            }
+            console.log('connected as id ', this.mysqlConn.threadId);
+        });
+    }
+
+    private parseOptions() {
+        console.log('parseOptions:');
+        let messageContent = this.message.content.trim();
+        let usedPrefix = messageContent.split(' ')[0];
+        let forPrase = messageContent.replace(`${usedPrefix}`, '').trim();
+        console.log(' forParse: ', forPrase);
+        let argv = forPrase.split(' ');
+        let options = commandLineArgs(
+            this.optionsDefinition, {
+                argv: argv,
+                partial: true,
+                stopAtFirstUnknown: true,
+                camelCase: true
+            });
+        this.options = options;
+        console.log(' options', options);
+
+        console.log(' this.options', this.options);
+        console.log(' this.textMessage', this.textMessage);
+    }
+
+    execute(): void {
+        console.log('execute:');
+        console.log(' this.options.help', this.options.help);
+        if (this.options.help) {
+            this.showUsage();
+            return;
+        }
+
+
+        switch (this.options.type) {
+            case '':
+            case 'nick':
+                this.checkUsers();
+                break;
+            default:
+                this.message.channel.send(`Nieobsługiwany typ: "${this.options.type}"`);
+                this.showUsage();
+        }
+
+    }
+
+    checkUsers() {
+        let dbUsers: any[];
+        dbUsers = [];
+        let query = "SELECT import_id from player_data order by import_id LIMIT 1";
+        this.mysqlConn.query(query)
+            .on('result', (data: any) => {
+                console.log(data);
+                query = `SELECT * from player_data where import_id ='${data.import_id}'`;
+                this.mysqlConn.query(query)
+                    .on('result', (data: any) => {
+                        console.log(data);
+                        dbUsers.push(data);
+                    })
+                    .on('error', (err: MysqlError) => {
+                        this.error(err.message);
+                    })
+                    .on('end', () => {
+                        this.dbUsers = dbUsers;
+                        this.parseUsers(dbUsers);
+                    });
+            })
+            .on('error', (err: MysqlError) => {
+                this.error(err.message);
+            })
+            .on('end', () => {
+            })
+        ;
+    }
+
+    private parseUsers(dbUsers: any[]) {
+        let guild = FCBot.client.guilds.cache.get('409376390308167682') as Guild;
+        console.log(guild.memberCount);
+        let chatChannel = FCBot.client.channels.cache.get('409376390753026063') as Channel;
+        let wrongNicks: string[] = [];
+        let extraRoles: BadRole[];
+        let missingRoles: BadRole[];
+        guild.members.fetch()
+            .then((members: Collection<Snowflake, GuildMember>) => {
+                // Ludzie których nicki nie pasują
+                wrongNicks = this.checkNicks(members);
+                extraRoles = this.checkExtraRoles(members);
+                missingRoles = this.checkMissingRoles(members);
+                console.log(missingRoles);
+            })
+            .finally(() => {
+                console.log(wrongNicks);
+                let embed = FCBot.embed();
+                this.addWrongNicks(embed, wrongNicks);
+                embed.addField('\u200b', '\u200b');
+                this.addExtraRoles(embed, extraRoles);
+                this.addMissingRoles(embed, missingRoles);
+                this.message.channel.send(embed);
+            });
+    }
+
+    private checkNicks(members: Collection<Snowflake, GuildMember>): string[] {
+        let wrongNicks: string[] = [];
+        this.dbUsers.forEach(dbUser => {
+            if (!members.some((member) => Discord.normalizeNick(member.nickname ?? member.user.username).toLowerCase() === dbUser.name.toLowerCase())) {
+                wrongNicks.push(dbUser.name);
+            }
+        })
+
+        return wrongNicks;
+    }
+
+    private addWrongNicks(embed: MessageEmbed, wrongNicks: string[]) {
+        if (wrongNicks.length === 0) {
+            embed.addField('**Nie znalazłem błędnych nicków**', '\u200b');
+        } else {
+            let field  = '';
+            wrongNicks.forEach(nick => {
+                field += `**${nick}**\n`;
+            })
+            embed.addField('**Nie znalazłem na Discord:**', field);
+        }
+    }
+
+    private checkExtraRoles(members: Collection<Snowflake, GuildMember>): BadRole[] {
+        let badRoles: BadRole[] = [];
+        members.forEach(member => {
+            console.log(member.nickname ?? member.user.username, this.isInGuild(member));
+
+            if (!this.isInGuild(member)) {
+                let roles: string[] = [];
+                if (member.roles.cache.get(ROLE_GUILD)) {
+                    roles.push('guild');
+                }
+                if (member.roles.cache.get(ROLE_MEMBER)) {
+                    roles.push('member');
+                }
+                if (member.roles.cache.get(ROLE_OFFICER)) {
+                    roles.push('officer');
+                }
+                if (roles.length === 0) {
+                    return;
+                }
+                let badRole: BadRole = {
+                    nick: member.nickname ?? member.user.username,
+                    roles: roles
+                }
+                badRoles.push(badRole);
+            }
+        });
+        return badRoles;
+    }
+
+    private addExtraRoles(embed: MessageEmbed, badRoles: BadRole[]) {
+        if (badRoles.length === 0) {
+            embed.addField('**Nie znalazłem błędnych ról poza gildią**', '\u200b');
+        } else {
+            let field  = '';
+            badRoles.forEach(role => {
+                let stringRoles = role.roles.join(', ');
+                field += `**${role.nick}**: ${stringRoles}\n`;
+            })
+            embed.addField('**Czyżby zbyt duże uprawnienia?**', field, true);
+        }
+    }
+
+    private checkMissingRoles(members: Collection<Snowflake, GuildMember>): any[] {
+        let badRoles: BadRole[] = [];
+        members.forEach(member => {
+            if (!this.isInGuild(member)) {
+                return;
+            }
+            let roles: string[] = [];
+            if (!member.roles.cache.get(ROLE_GUILD)) {
+                roles.push('guild');
+            }
+            if (!(member.roles.cache.get(ROLE_MEMBER) || member.roles.cache.get(ROLE_OFFICER))) {
+                roles.push('member/officer');
+            }
+            if (roles.length === 0) {
+                return;
+            }
+            let badRole: BadRole = {
+                nick: member.nickname ?? member.user.username,
+                roles: roles
+            }
+            badRoles.push(badRole);
+
+        });
+        return badRoles;
+    }
+
+    private addMissingRoles(embed: MessageEmbed, badRoles: BadRole[]) {
+        if (badRoles.length === 0) {
+            embed.addField('**Nie znalazłem błędnych ról w gildii**', '\u200b');
+        } else {
+            let field  = '';
+            badRoles.forEach(role => {
+                let stringRoles = role.roles.join(', ');
+                field += `**${role.nick}**: ${stringRoles}\n`;
+            })
+            embed.addField('**Zbyt małe uprawnienia:**', field, true);
+        }
+    }
+    static normalizeNick(nick: string): string {
+        return emojiStrip(nick).replace('☆', '').replace('★', '').trim()
+    }
+
+    private isInGuild(member: GuildMember) {
+        let nick = Discord.normalizeNick(member.nickname ?? member.user.username);
+        return this.dbUsers.find(dbUser => dbUser.name === nick) !== undefined;
+    }
+}
+
+interface BadRole {
+    nick: string;
+    roles: string[];
+}
+

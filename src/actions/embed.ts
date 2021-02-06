@@ -1,4 +1,4 @@
-import { Message } from 'discord.js';
+import {GuildMember, Message} from 'discord.js';
 import { Color } from '../utils/color';
 import { AbstractCommand, OptionDefinition, UsageDefinition } from '../abstract-command';
 import { FCBot } from '../FCBot';
@@ -116,8 +116,9 @@ export class Embed extends AbstractCommand {
             console.log(anonTypes[indexAnonType]);
         }
 
+        let member = this.message.member as GuildMember;
         embed
-            .setAuthor('Ogłoszenie', this.message.member.user.avatarURL)
+            .setAuthor('Ogłoszenie', member.user.avatar as string)
             .setDescription(this.textMessage)
         ;
 

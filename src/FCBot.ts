@@ -1,5 +1,5 @@
 import { Discord, Client, On } from '@typeit/discord';
-import { Message, RichEmbed } from 'discord.js';
+import {ClientUser, Intents, Message, MessageEmbed} from 'discord.js';
 import { Kick } from './actions/kick';
 import { Pong } from './actions/pong';
 import { Mention } from './actions/mention';
@@ -10,16 +10,17 @@ import { Help } from './actions/help';
 import { Abs } from './actions/abs';
 import { Stats } from './actions/stats';
 import { Covid } from './actions/covid';
+import { Discord as DiscordCommand } from './actions/discord';
 
 @Discord
 export abstract class FCBot {
 
-    private static client: Client;
+    static client: Client;
     private prefix: string = "!";
     private commandNotFoundMessage: string = "command not found...";
 
     static start() {
-        this.client = new Client();
+        this.client = new Client({ws: {intents: Intents.ALL}});
         this.client.login(
             process.env.BOT_TOKEN as string,
             `${__dirname}/*Discord.ts` // glob string to load the classes
@@ -28,7 +29,8 @@ export abstract class FCBot {
 
     @On("message")
     async onMessage(message: Message, client: Client) {
-        if (FCBot.client.user.id === message.author.id) {
+        let user = FCBot.client.user as ClientUser;
+        if (user.id === message.author.id) {
             return;
         }
         let mentionCommand = new Mention(message);
@@ -67,6 +69,10 @@ export abstract class FCBot {
                     command = new Covid(message);
                     command.execute();
                     break;
+                case "discord":
+                    command = new DiscordCommand(message);
+                    command.execute();
+                    break;
                 case "help":
                     command = new Help(message);
                     command.execute();
@@ -83,10 +89,11 @@ export abstract class FCBot {
 
     }
 
-    static embed() : RichEmbed {
-        return new RichEmbed()
+    static embed() : MessageEmbed {
+        let user = FCBot.client.user as ClientUser;
+        return new MessageEmbed()
             .setURL('https://github.com/styxiak/fc-bot')
-            .setAuthor('D-O', FCBot.client.user.avatarURL)
+            .setAuthor('D-O', user.displayAvatarURL())
             .setThumbnail('http://chuchmala.pl/static/bio_hazard.png')
             .setTimestamp()
             .setColor(Color.DEFAULT)

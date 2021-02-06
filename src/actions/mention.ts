@@ -1,4 +1,4 @@
-import { GuildMember, Message, RichEmbed } from "discord.js";
+import {GuildMember, Message, MessageEmbed, Role} from "discord.js";
 import storage from 'node-persist';
 import NodePersist from 'node-persist';
 import moment, { Moment } from 'moment';
@@ -31,7 +31,7 @@ const defaultConfig: Config = {
     howLong: 5,
 };
 
-export class Mention extends AbstractCommand{
+export class Mention extends AbstractCommand {
 
     protected readonly prefix = 'mention';
     protected readonly acceptedCommands = [
@@ -332,6 +332,7 @@ export class Mention extends AbstractCommand{
             return;
         }
         //todo dodatkowe sprawdzanie kiedy pokazać help
+        let member = this.message.member as GuildMember;
 
         console.log(' subcommand', this.subcommand);
         if (this.acceptedCommands.indexOf(this.subcommand) < 0) {
@@ -340,21 +341,21 @@ export class Mention extends AbstractCommand{
         }
         switch (this.subcommand) {
             case 'add':
-                if (!this.isAdmin(this.message.member)) {
+                if (!this.isAdmin(member)) {
                     this.message.reply(`Aby użyc tej komendy musisz mieć rolę: ${this.adminRoleName}`);
                     break;
                 }
                 this.add(this.options.mention);
                 break;
             case 'del':
-                if (!this.isAdmin(this.message.member)) {
+                if (!this.isAdmin(member)) {
                     this.message.reply(`Aby użyc tej komendy musisz mieć rolę: ${this.adminRoleName}`);
                     break;
                 }
                 this.del(this.options.mention);
                 break;
             case 'set':
-                if (!this.isAdmin(this.message.member)) {
+                if (!this.isAdmin(member)) {
                     this.message.reply(`Aby użyc tej komendy musisz mieć rolę :${this.adminRoleName}`);
                     break;
                 }
@@ -380,14 +381,15 @@ export class Mention extends AbstractCommand{
             .then(([config, userMentions]) => {
                 console.log('readed from storage: config', config, 'mentions:', userMentions);
 
-                let userIndex: string = this.message.member.id;
+                let member = this.message.member as GuildMember;
+                let userIndex: string = member.id;
                 config.mentions.forEach((mention) => {
                     if (this.message.content.indexOf(mention) < 0) {
                         return;
                     }
 
                     let now = moment(this.message.createdAt);
-                    console.log('Mentions detected: ' + mention + ' by user: ' + this.message.member);
+                    console.log('Mentions detected: ' + mention + ' by user: ' + member);
                     if (!userMentions[userIndex]) {
                         userMentions[userIndex] = [];
                     }
@@ -420,9 +422,9 @@ export class Mention extends AbstractCommand{
                     if (config.howMany < counter) {
                         let message = `Dostajesz rolę \`${config.deniedRole}\` na \`${config.deniedHowLong}\` minut.`;
                         message += `Po tym czasie możesz ją sobie zdjąć komendą \`!mention clear\``;
-                        const role = this.getRole(config);
+                        const role = this.getRole(config) as Role;
                         this.message.reply(message);
-                        this.message.member.addRole(role, 'Bo tak!');
+                        member?.roles.add(role, 'Bo tak!');
                     }
                 });
             });
@@ -432,7 +434,8 @@ export class Mention extends AbstractCommand{
     private clear() {
         Promise.all([this.config$, this.mentions$])
             .then(([config, userMentions]) => {
-                let userIndex: string = this.message.member.id;
+                let member = this.message.member as GuildMember;
+                let userIndex: string = member.id;
                 if (userMentions[userIndex].length <=0 ) {
                     this.message.reply('Nie masz zapisanych żadnych wzmianek.');
                     return;
@@ -460,8 +463,8 @@ export class Mention extends AbstractCommand{
                 } else {
                     message += 'nie miałeś roli `[no-mentions]`\n'
                 }
-                const role = this.getRole(config);
-                this.message.member.removeRole(role, 'Bo tak!');
+                const role = this.getRole(config) as Role;
+                member.roles.remove(role, 'Bo tak!');
 
                 this.message.reply(message);
             });
@@ -470,7 +473,8 @@ export class Mention extends AbstractCommand{
     private check() {
         Promise.all([this.config$, this.mentions$])
             .then(([config, userMentions]) => {
-                let userIndex: string = this.message.member.id;
+                let member = this.message.member as GuildMember;
+                let userIndex: string = member.id;
                 if (!userMentions[userIndex] || userMentions[userIndex].length <=0 ) {
                     this.message.reply('Nie masz zapisanych żadnych wzmianek.');
                     return;
@@ -537,12 +541,12 @@ export class Mention extends AbstractCommand{
     }
 
     private hasDeniedRole(config: Config) {
-        return this.message.member.roles.exists('name', config.deniedRole);
+        return this.message.member?.roles.cache.some( role => role.name === config.deniedRole);
     }
 
     private getRole(config: Config) {
         //todo sprawdzenie czy rola jest zdefiniowana
-        return this.message.guild.roles.find('name', config.deniedRole);
+        return this.message.guild?.roles.cache.find(role => role.name === config.deniedRole);
     }
 
     private printConfig() {
@@ -636,8 +640,11 @@ export class Mention extends AbstractCommand{
 
     }
 
-    private isAdmin(member: GuildMember) {
-        return member.roles.some(role => role.name === this.adminRoleName)
+    private isAdmin(member?: GuildMember) {
+        if (!member) {
+            return false;
+        }
+        return member.roles.cache.some(role => role.name === this.adminRoleName)
     }
 
     private saveConfig(config: Config) {
@@ -648,7 +655,7 @@ export class Mention extends AbstractCommand{
         return this.storage.setItem(this.mentionsKey, mentions);
     }
 
-    protected prepareUsage(): RichEmbed {
+    protected prepareUsage(): MessageEmbed {
         switch(this.subcommand) {
             case 'add':
                 this.usageDefinition = this.commandUsageDefinition.add;

@@ -12,23 +12,25 @@
     },
     "dependencies": {
         "@typeit/discord": "^1.0.12",
-        "@types/mysql": "^2.15.10",
+        "@types/mysql": "^2.15.17",
         "@types/nconf": "^0.10.0",
-        "@types/node": "^13.13.5",
-        "@types/node-persist": "^3.0.0",
+        "@types/node": "^13.13.41",
+        "@types/node-persist": "^3.1.1",
+        "@types/ws": "^7.4.0",
         "command-line-args": "^5.1.1",
-        "discord.js": "^11.6.4",
+        "discord.js": "^12.5.1",
         "dotenv": "^8.2.0",
+        "emoji-strip": "^1.0.1",
         "human-readable-numbers": "^0.9.5",
-        "moment": "^2.25.3",
+        "moment": "^2.29.1",
         "mysql": "^2.18.1",
         "nconf": "^0.10.0",
-        "node-persist": "^3.0.5",
+        "node-persist": "^3.1.0",
         "novelcovid": "^1.2.7",
         "reflect-metadata": "^0.1.13",
         "text-table": "^0.2.0",
-        "tslib": "^1.11.2",
-        "typescript": "^3.8.3"
+        "tslib": "^1.14.1",
+        "typescript": "^3.9.7"
     },
     "devDependencies": {
         "nodemon": "^1.18.9"

@@ -342,7 +342,7 @@ export class Stats extends AbstractCommand {
             .setColor(Color.BLUE)
             .addField('**Najwyższe GP**', `${maxGpValue}`, true)
             .addField('**Najniższe GP**', `${minGpValue}`, true)
-            .addBlankField()
+            .addField('\u200b', '\u200b')
             .addField('**Najwyższy przyrost GP**', `${maxGpProgress}`, true)
             .addField('**Najniższy przyrost GP**', `${minGpProgress}`, true)
         ;
