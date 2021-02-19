@@ -2,14 +2,11 @@ import {AbstractCommand, OptionDefinition, UsageDefinition} from "../abstract-co
 import {Channel, Collection, Guild, GuildMember, Message, MessageEmbed, Snowflake} from "discord.js";
 import {Connection, createConnection, MysqlError} from "mysql";
 import {FCBot} from "../FCBot";
+import {ROLE_ECHO_ADMIN, ROLE_ECHO_COMMANDER, ROLE_GUILD, ROLE_MEMBER, ROLE_OFFICER} from "../types/role";
+import {UserUtils} from "../utils/user-utils";
 
 const commandLineArgs = require("command-line-args");
 const emojiStrip = require("emoji-strip");
-
-export const ROLE_GUILD = '501311378858967051';
-export const ROLE_MEMBER = '497141675181735946';
-export const ROLE_OFFICER = '568158969248612353';
-
 
 export class Discord extends AbstractCommand {
 
@@ -29,7 +26,6 @@ export class Discord extends AbstractCommand {
             alias: 'h',
             description: 'Pomoc'
         }
-
     ]
 
     protected usageDefinition: UsageDefinition[] = [
@@ -88,24 +84,7 @@ export class Discord extends AbstractCommand {
     }
 
     execute(): void {
-        console.log('execute:');
-        console.log(' this.options.help', this.options.help);
-        if (this.options.help) {
-            this.showUsage();
-            return;
-        }
-
-
-        switch (this.options.type) {
-            case '':
-            case 'nick':
-                this.checkUsers();
-                break;
-            default:
-                this.message.channel.send(`Nieobsługiwany typ: "${this.options.type}"`);
-                this.showUsage();
-        }
-
+        this.checkUsers();
     }
 
     checkUsers() {
@@ -190,9 +169,9 @@ export class Discord extends AbstractCommand {
         let badRoles: BadRole[] = [];
         members.forEach(member => {
             console.log(member.nickname ?? member.user.username, this.isInGuild(member));
-
-            if (!this.isInGuild(member)) {
-                let roles: string[] = [];
+            let user = this.isInGuild(member);
+            let roles: string[] = [];
+            if (!user) {
                 if (member.roles.cache.get(ROLE_GUILD)) {
                     roles.push('guild');
                 }
@@ -202,6 +181,12 @@ export class Discord extends AbstractCommand {
                 if (member.roles.cache.get(ROLE_OFFICER)) {
                     roles.push('officer');
                 }
+                if (member.roles.cache.get(ROLE_ECHO_ADMIN)) {
+                    roles.push('EchoAdmin');
+                }
+                if (member.roles.cache.get(ROLE_ECHO_COMMANDER)) {
+                    roles.push('EchoCommander');
+                }
                 if (roles.length === 0) {
                     return;
                 }
@@ -210,6 +195,34 @@ export class Discord extends AbstractCommand {
                     roles: roles
                 }
                 badRoles.push(badRole);
+            } else {
+                switch (user.guild_member_level) {
+                    case 2:
+                        if (member.roles.cache.get(ROLE_OFFICER)) {
+                            roles.push('officer');
+                        }
+                        if (member.roles.cache.get(ROLE_ECHO_ADMIN)) {
+                            roles.push('EchoAdmin');
+                        }
+                        if (member.roles.cache.get(ROLE_ECHO_COMMANDER)) {
+                            roles.push('EchoCommander');
+                        }
+                        break;
+                    case 3:
+                        if (member.roles.cache.get(ROLE_MEMBER)) {
+                            roles.push('member');
+                        }
+                        break;
+                }
+                if (roles.length === 0) {
+                    return;
+                }
+                let badRole: BadRole = {
+                    nick: UserUtils.getNick(member),
+                    roles: roles
+                }
+                badRoles.push(badRole);
+
             }
         });
         return badRoles;
@@ -217,30 +230,49 @@ export class Discord extends AbstractCommand {
 
     private addExtraRoles(embed: MessageEmbed, badRoles: BadRole[]) {
         if (badRoles.length === 0) {
-            embed.addField('**Nie znalazłem błędnych ról poza gildią**', '\u200b');
+            embed.addField('**Nie znalazłem błędnych nadmiarowych ról**', '\u200b');
         } else {
             let field  = '';
             badRoles.forEach(role => {
                 let stringRoles = role.roles.join(', ');
                 field += `**${role.nick}**: ${stringRoles}\n`;
             })
-            embed.addField('**Czyżby zbyt duże uprawnienia?**', field, true);
+            embed.addField('**Czyżby za dużo ról?**', field, true);
         }
     }
 
     private checkMissingRoles(members: Collection<Snowflake, GuildMember>): any[] {
         let badRoles: BadRole[] = [];
         members.forEach(member => {
-            if (!this.isInGuild(member)) {
+            let user = this.isInGuild(member);
+            if (!user) {
+
                 return;
             }
             let roles: string[] = [];
             if (!member.roles.cache.get(ROLE_GUILD)) {
                 roles.push('guild');
             }
-            if (!(member.roles.cache.get(ROLE_MEMBER) || member.roles.cache.get(ROLE_OFFICER))) {
-                roles.push('member/officer');
+
+            switch (user.guild_member_level) {
+                case 2:
+                    if (!member.roles.cache.get(ROLE_MEMBER)) {
+                        roles.push('member');
+                    }
+                    break;
+                case 3:
+                    if (!member.roles.cache.get(ROLE_OFFICER)) {
+                        roles.push('officer');
+                    }
+                    if (!member.roles.cache.get(ROLE_ECHO_ADMIN)) {
+                        roles.push('EchoAdmin');
+                    }
+                    if (!member.roles.cache.get(ROLE_ECHO_COMMANDER)) {
+                        roles.push('EchoCommander');
+                    }
+                    break;
             }
+
             if (roles.length === 0) {
                 return;
             }
@@ -256,14 +288,14 @@ export class Discord extends AbstractCommand {
 
     private addMissingRoles(embed: MessageEmbed, badRoles: BadRole[]) {
         if (badRoles.length === 0) {
-            embed.addField('**Nie znalazłem błędnych ról w gildii**', '\u200b');
+            embed.addField('**Nie znalazłem brakujących ról**', '\u200b');
         } else {
             let field  = '';
             badRoles.forEach(role => {
                 let stringRoles = role.roles.join(', ');
                 field += `**${role.nick}**: ${stringRoles}\n`;
             })
-            embed.addField('**Zbyt małe uprawnienia:**', field, true);
+            embed.addField('**Brakujące role:**', field, true);
         }
     }
     static normalizeNick(nick: string): string {
@@ -272,7 +304,7 @@ export class Discord extends AbstractCommand {
 
     private isInGuild(member: GuildMember) {
         let nick = Discord.normalizeNick(member.nickname ?? member.user.username);
-        return this.dbUsers.find(dbUser => dbUser.name === nick) !== undefined;
+        return this.dbUsers.find(dbUser => dbUser.name === nick);
     }
 }
 

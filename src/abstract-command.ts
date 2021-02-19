@@ -12,6 +12,7 @@ export interface OptionDefinition {
     typeLabel?: string;
     multiple?: Boolean;
     defaultOption?: Boolean;
+    defaultValue?: any;
 }
 
 export interface UsageDefinition {

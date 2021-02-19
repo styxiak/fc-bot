@@ -118,7 +118,7 @@ export class Embed extends AbstractCommand {
 
         let member = this.message.member as GuildMember;
         embed
-            .setAuthor('Ogłoszenie', member.user.avatar as string)
+            .setAuthor('Ogłoszenie', member.user.displayAvatarURL())
             .setDescription(this.textMessage)
         ;
 

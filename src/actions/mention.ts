@@ -213,16 +213,12 @@ export class Mention extends AbstractCommand {
             });
         this.config$ = initStorage$
             .then((val) => {
-                // console.log('config.init: ', val);
                 return this.storage.keys();
             })
             .then((keys) => {
-                // console.log('config.keys: ', keys);
                 if (keys.indexOf(this.configKey) < 0) {
-                    console.log('config is empty, set default');
                     return this.saveConfig(defaultConfig);
                 }
-                // console.log('config get item');
                 return this.storage.getItem(this.configKey);
             })
             .catch((reason) => {
@@ -230,7 +226,6 @@ export class Mention extends AbstractCommand {
             });
         this.config$
             .then((config:Config) => {
-                // console.log('config.result: ', config);
             })
             .catch((reason) => {
                 console.error(`Error initializing config: ${reason}`);
@@ -238,20 +233,16 @@ export class Mention extends AbstractCommand {
 
         this.mentions$ = initStorage$
             .then((val) => {
-                // console.log('config.init: ', val);
                 return this.storage.keys();
             })
             .then((keys) => {
-                // console.log('config.keys: ', keys);
                 if (keys.indexOf(this.mentionsKey) < 0) {
-                    // console.log('mentions are empty, set default');
                     let mentions = new class implements UserMentions {
                         [key: string]: UserMention[];
                     };
                     return this.saveUserMentions(mentions);
 
                 }
-                // console.log('mentions get item');
                 return this.storage.getItem(this.mentionsKey);
             })
             .catch((reason) => {
@@ -259,8 +250,6 @@ export class Mention extends AbstractCommand {
             });
         this.mentions$
             .then((mentions:UserMentions) => {
-                // console.log('mentions.result: ', mentions);
-                // this.config = config;
             })
             .catch((reason) => {
                 console.error(`Error initializing mentions: ${reason}`);
@@ -270,14 +259,12 @@ export class Mention extends AbstractCommand {
 
     //todo rozbić na dwie jeśli są tylko parametry lub jest subkomnedda i przenieść do abstract
     private parseOptions() {
-        console.log('parseOptions:');
         let messageContent = this.message.content.trim();
         let usedPrefix = messageContent.split(' ')[0];
         if (messageContent === `${usedPrefix}`) {
             messageContent += ' -h';
         }
         let forPrase = messageContent.replace(`${usedPrefix}`, '').trim();
-        console.log(' forParse: ', forPrase);
         let argv = forPrase.split(' ');
         let regex = new RegExp(`/!${this.prefix}(.*)-- /`);
         this.textMessage = messageContent.replace(regex, '').trim();
@@ -291,7 +278,6 @@ export class Mention extends AbstractCommand {
             });
         this.options = options;
         argv = options._unknown || [];
-        console.log(' options', options);
 
         this.subcommand = options.command;
 
@@ -320,13 +306,9 @@ export class Mention extends AbstractCommand {
         if (options.help) {
             this.options.help = options.help;
         }
-        console.log(' this.options', this.options);
-        console.log(' this.textMessage', this.textMessage);
     }
 
     execute(): void {
-        console.log('execute:');
-        console.log(' this.options.help', this.options.help);
         if (this.options.help) {
             this.showUsage();
             return;
@@ -334,7 +316,7 @@ export class Mention extends AbstractCommand {
         //todo dodatkowe sprawdzanie kiedy pokazać help
         let member = this.message.member as GuildMember;
 
-        console.log(' subcommand', this.subcommand);
+        // console.log(' subcommand', this.subcommand);
         if (this.acceptedCommands.indexOf(this.subcommand) < 0) {
             this.showUsage();
             return;
@@ -379,9 +361,10 @@ export class Mention extends AbstractCommand {
     watch(): void {
         Promise.all([this.config$, this.mentions$])
             .then(([config, userMentions]) => {
-                console.log('readed from storage: config', config, 'mentions:', userMentions);
+                // console.log('readed from storage: config', config, 'mentions:', userMentions);
 
                 let member = this.message.member as GuildMember;
+                console.log(member);
                 let userIndex: string = member.id;
                 config.mentions.forEach((mention) => {
                     if (this.message.content.indexOf(mention) < 0) {
@@ -389,7 +372,7 @@ export class Mention extends AbstractCommand {
                     }
 
                     let now = moment(this.message.createdAt);
-                    console.log('Mentions detected: ' + mention + ' by user: ' + member);
+                    // console.log('Mentions detected: ' + mention + ' by user: ' + member);
                     if (!userMentions[userIndex]) {
                         userMentions[userIndex] = [];
                     }
@@ -406,13 +389,13 @@ export class Mention extends AbstractCommand {
                     let counter = 0;
                     userMentions[userIndex].forEach((value) => {
                         let momentValue = moment(value.time);
-                        console.log(momentValue);
+                        // console.log(momentValue);
                         if (momentValue.isAfter(allowedAgo)) {
                             counter++;
                         }
                     });
-                    console.log(counter);
-                    console.log(userMentions);
+                    // console.log(counter);
+                    // console.log(userMentions);
                     if (config.howMany - 1 === counter) {
                         this.message.reply(`Jeszcze jedna wzmianka i zostaniesz uciszony.`);
                     }
@@ -479,7 +462,7 @@ export class Mention extends AbstractCommand {
                     this.message.reply('Nie masz zapisanych żadnych wzmianek.');
                     return;
                 }
-                console.log(this.message.createdAt);
+                // console.log(this.message.createdAt);
                 let myMentions = userMentions[userIndex];
                 let counter = 0;
                 let message = 'Lista Twoich wzmianek:\n';
@@ -530,7 +513,7 @@ export class Mention extends AbstractCommand {
         let lastMessageDate = moment(myMentions[myMentions.length - 1].time);
         let diff = now.diff(lastMessageDate);
         let lastMessageAge = Math.floor(moment.duration(diff).asMinutes());
-        console.log('now:',now.format(), 'lastMessage:', lastMessageDate.format(), 'diff:', diff);
+        // console.log('now:',now.format(), 'lastMessage:', lastMessageDate.format(), 'diff:', diff);
         return lastMessageAge;
     }
 
@@ -551,7 +534,7 @@ export class Mention extends AbstractCommand {
 
     private printConfig() {
         this.config$.then((config: Config) => {
-            console.log(config);
+            // console.log(config);
             let message = '```';
             message += "mentions:\n";
             config.mentions.forEach((mention: string) => {
@@ -574,10 +557,10 @@ export class Mention extends AbstractCommand {
             }
 
             config.mentions.push(mentionToAdd);
-            console.log(config);
+            // console.log(config);
             this.saveConfig(config)
                 .then((writeResult)=> {
-                    console.log('writeResult: ', writeResult);
+                    // console.log('writeResult: ', writeResult);
                     this.message.channel.send(mentionToAdd.replace('@', '~~@~~') + ' dodane.');
                 });
         })
@@ -599,7 +582,7 @@ export class Mention extends AbstractCommand {
             config.mentions.splice(index, 1);
             this.saveConfig(config)
                 .then((writeResult) => {
-                    console.log('writeResult: ', writeResult);
+                    // console.log('writeResult: ', writeResult);
                     this.message.channel.send(mentionToDel.replace('@', '~~@~~') + ' usunięte.');
                 });
         });
@@ -610,7 +593,7 @@ export class Mention extends AbstractCommand {
             config.deniedRole = role;
             this.saveConfig(config)
                 .then((writeResult) => {
-                    console.log('writeResult: ', writeResult);
+                    // console.log('writeResult: ', writeResult);
                     this.message.channel.send(`Ustawiona rola: ${role}`);
                 })
         });
@@ -632,7 +615,7 @@ export class Mention extends AbstractCommand {
             }
             this.saveConfig(config)
                 .then((writeResult) => {
-                    console.log('writeResult: ', writeResult);
+                    // console.log('writeResult: ', writeResult);
                     //todo message
                     this.message.channel.send(`Ustawione opcje: `);
                 })

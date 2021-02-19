@@ -5,6 +5,7 @@ import moment, { Moment } from 'moment';
 import { FCBot } from '../FCBot';
 import { Color } from '../utils/color';
 import { changeEmptyToVal } from '../utils/util.functions';
+import {Db} from "../db";
 
 const commandLineArgs = require("command-line-args");
 const HRNumbers = require('human-readable-numbers');
@@ -65,49 +66,15 @@ export class Stats extends AbstractCommand {
         'gp',
     ];
 
-    protected mysqlConn: Connection;
+    protected db: Db;
 
     constructor(message: Message) {
         super(message);
 
-        let connectionUri = {
-            host: process.env.MYSQL_HOST,
-            user: process.env.MYSQL_USER,
-            password: process.env.MYSQL_PASS,
-            database: process.env.MYSQL_DB,
-            multipleStatements: true
-        };
-        this.mysqlConn = createConnection(connectionUri);
-
-        this.setUpMySQLConnection();
-        this.handleDisconnect();
+        this.db = new Db();
         this.parseOptions();
     }
 
-    setUpMySQLConnection() {
-
-        this.mysqlConn.connect((err) => {
-            if (err) {
-                console.error('error connecting: ' + err.stack);
-                return;
-            }
-            console.log('connected as id ', this.mysqlConn.threadId);
-        });
-
-        this.mysqlConn.on("close", (err) => {
-            console.log(`SQL CONNECTION CLOSED: ${err}`);
-        });
-
-    }
-
-    handleDisconnect() {
-        this.mysqlConn.on('error', (err) => {
-            console.log('Re-connecting lost connection');
-            this.mysqlConn.destroy();
-            this.setUpMySQLConnection();
-            this.handleDisconnect();
-        });
-    }
 
     //todo rozbić na dwie jeśli są tylko parametry lub jest subkomnedda i przenieść do abstract
     private parseOptions() {
@@ -138,21 +105,6 @@ export class Stats extends AbstractCommand {
             this.subcommand = options.command;
 
             let subcommandDefinition: any[] = [];
-            //todo przystosować do abstract
-            // switch(this.subcommand) {
-                // case 'add':
-                //     subcommandDefinition = this.commandOptionsDefinition['add'];
-                //     break;
-                // case 'del':
-                //     subcommandDefinition = this.commandOptionsDefinition['del'];
-                //     break;
-                // case 'set':
-                //     subcommandDefinition = this.commandOptionsDefinition['set'];
-                //     break;
-                // default:
-                //todo wymusić help
-            // }
-
             this.options = commandLineArgs(
                 subcommandDefinition, {
                     argv: argv,
@@ -165,6 +117,10 @@ export class Stats extends AbstractCommand {
             }
 
         }
+        if (!this.options.period) {
+            this.options.period = 'month';
+        }
+
         console.log(' this.options', this.options);
         console.log(' this.textMessage', this.textMessage);
     }
@@ -199,7 +155,7 @@ export class Stats extends AbstractCommand {
 
     gpStats() {
         let query = `SELECT DISTINCT galactic_power, character_galactic_power, ship_galactic_power, last_updated FROM player_data where name = ? order by last_updated desc;`;
-        this.mysqlConn.query(query, [this.options.nick], (err, result: any[], fields) => {
+        this.db.conn.query(query, [this.options.nick], (err, result: any[], fields) => {
             if (err) {
                 this.error(err.message);
                 return;
@@ -223,32 +179,20 @@ export class Stats extends AbstractCommand {
     guildStats() {
         this.getMaxGP(this.options.count);
     }
-    getMaxGP(count: number) {
+
+    async getMaxGP(count: number) {
 
         let query = `SELECT ANY_VALUE(name) as name, ANY_VALUE(galactic_power) as galactic_power, ANY_VALUE(character_galactic_power) as character_galactic_power, ANY_VALUE(ship_galactic_power) as ship_galactic_power, MAX(last_updated) FROM \`do-api\`.player_data group by ally_code`;
         let queryMax = query + ' order by galactic_power desc limit ?'
         let queryMin = query + ' order by galactic_power asc limit ?'
 
-        let gpProgress = 'select t1.name, min_gp, max_gp,  (max_gp-min_gp)/min_gp*100 as progress ' +
-            'from ' +
-            '(select ' +
-            'ANY_VALUE(name) as name, ally_code, min(galactic_power) as min_gp ' +
-            'from player_data ' +
-            'where last_updated > ? ' +
-            'group by ally_code) as t1 ' +
-            'JOIN ' +
-            '(select ' +
-            'ANY_VALUE(name) as name, ally_code, max(galactic_power) as max_gp ' +
-            'from player_data ' +
-            'where last_updated > ? ' +
-            'group by ally_code) as t2 ' +
-            'on t1.ally_code = t2.ally_code ' +
-            '';
-        gpProgress = 'select distinct\n' +
-            '\tp.name,\n' +
-            '    min_gp,\n' +
-            '    max_gp,\n' +
-            '    (max_gp-min_gp)/min_gp*100 as progress\n' +
+        let guildAverageProgressQuery = 'select (max_gp-min_gp) /50 as average from (select min(galactic_power) as min_gp, ANY_VALUE(id)  as id FROM guild_data where last_update > ?) as t1 JOIN (select max(galactic_power) as max_gp, ANY_VALUE(id)  as id FROM guild_data where last_update > ?) as t2 ON t1.id = t2.id;\n';
+
+        let gpProgress = 'select distinct\n' +
+            '   p.name,\n' +
+            '   min_gp,\n' +
+            '   max_gp,\n' +
+            '   (max_gp-min_gp)/? * 100 as progress\n' +
             'from player_data as p\n' +
             'JOIN (\n' +
             'select ally_code, min(galactic_power) as min_gp \n' +
@@ -272,48 +216,18 @@ export class Stats extends AbstractCommand {
         d.subtract('1', this.options.period);
         let dateString = d.format('YYYY-MM-DD hh:mm:ss');
 
+        let guildAverage = await this.db.asyncQuery(guildAverageProgressQuery, [dateString, dateString]);
+        let average = guildAverage[0].average;
+        console.log(average);
 
-        this.mysqlConn.query(queryMax, [count])
-            .on('result', (result) => {
-                console.log(result);
-                results.max.push(result);
-            })
-            .on('error', (err: MysqlError) => {
-                this.error(err.message);
-            })
-            .on('end', () => {
-                this.mysqlConn.query(queryMin, [count])
-                    .on('result', (result) => {
-                        console.log(result);
-                        results.min.push(result);
-                    })
-                    .on('error', (err: MysqlError) => {
-                        this.error(err.message);
-                    }).on('end', () => {
-                    this.mysqlConn.query(gpProgressMax, [dateString, dateString, count])
-                        .on('result', (result) => {
-                            console.log(result);
-                            results.progressMax.push(result);
-                        })
-                        .on('error', (err: MysqlError) => {
-                            console.log(err);
-                            this.error(err.message);
-                        }).on('end', () => {
-                        this.mysqlConn.query(gpProgressMin, [dateString, dateString, count])
-                            .on('result', (result) => {
-                                console.log(result);
-                                results.progressMin.push(result);
-                            })
-                            .on('error', (err: MysqlError) => {
-                                console.log(err);
-                                this.error(err.message);
-                            }).on('end', () => {
-                            this.sendData(results);
-                        });
-                    });
-                });
-            });
+        results.max = await this.db.asyncQuery(queryMax, [count]);
+        results.min = await this.db.asyncQuery(queryMin, [count]);
+        results.progressMax = await this.db.asyncQuery(gpProgressMax, [average, dateString, dateString, count]);
+        results.progressMin = await this.db.asyncQuery(gpProgressMin, [average, dateString, dateString, count]);
+        console.log(results.progressMin);
+        this.sendData(results);
 
+        return;
     }
 
     sendData(results: any) {

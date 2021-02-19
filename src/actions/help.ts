@@ -13,10 +13,10 @@ export class Help extends AbstractCommand {
         {
             header: 'Dostępne komendy',
             content: '**ping** - pinguje bota\n' +
-                '**kick** - wykopuje użytkownika\n' +
                 '**mentions**, **m** - zarządza spoamowaniem wzmiankami\n' +
-                '**embed** - umieszcza ładne ogłoszenia' +
-                ''
+                '**embed** - umieszcza ładne ogłoszenia\n' +
+                '**discord** - sprawdzenie poprawności ról na discord\n' +
+                '**guild** - zbiór komend do zarządzania rolami w gildii'
         },
         {
             header: 'Więcej informacji',
