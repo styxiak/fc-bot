@@ -3,6 +3,7 @@ import { Message } from 'discord.js';
 import { FCBot } from '../FCBot';
 import { Color } from '../utils/color';
 import { NovelCovid } from 'novelcovid';
+import {EmbedUtils} from "../utils/embed-utils";
 
 const commandLineArgs = require("command-line-args");
 const HRNumbers = require('human-readable-numbers');
@@ -119,7 +120,7 @@ export class Covid extends AbstractCommand {
             `:skull: \`${deaths.padStart(10)}\`\n` +
             `:heart: \`${recovered.padStart(10)}\`\n` +
             `${stringDate}`;
-        const embed = FCBot.embed()
+        const embed = EmbedUtils.embed()
             .setColor(Color.DARK_RED)
             .setTitle('Globalne dane')
             .setDescription(description)
@@ -148,7 +149,7 @@ export class Covid extends AbstractCommand {
             `:hospital: \`${critical.padStart(7)}\`\n`;
 
 
-        const embed = FCBot.embed()
+        const embed = EmbedUtils.embed()
             .setColor(Color.DARK_RED)
             .setTitle(`Dane dla kraju **${data.country}**`)
             .addField('Ogólnie', total)

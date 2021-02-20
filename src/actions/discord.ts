@@ -4,9 +4,9 @@ import {Connection, createConnection, MysqlError} from "mysql";
 import {FCBot} from "../FCBot";
 import {ROLE_ECHO_ADMIN, ROLE_ECHO_COMMANDER, ROLE_GUILD, ROLE_MEMBER, ROLE_OFFICER} from "../types/role";
 import {UserUtils} from "../utils/user-utils";
+import {EmbedUtils} from "../utils/embed-utils";
 
 const commandLineArgs = require("command-line-args");
-const emojiStrip = require("emoji-strip");
 
 export class Discord extends AbstractCommand {
 
@@ -133,7 +133,7 @@ export class Discord extends AbstractCommand {
             })
             .finally(() => {
                 console.log(wrongNicks);
-                let embed = FCBot.embed();
+                let embed = EmbedUtils.embed();
                 this.addWrongNicks(embed, wrongNicks);
                 embed.addField('\u200b', '\u200b');
                 this.addExtraRoles(embed, extraRoles);
@@ -145,7 +145,7 @@ export class Discord extends AbstractCommand {
     private checkNicks(members: Collection<Snowflake, GuildMember>): string[] {
         let wrongNicks: string[] = [];
         this.dbUsers.forEach(dbUser => {
-            if (!members.some((member) => Discord.normalizeNick(member.nickname ?? member.user.username).toLowerCase() === dbUser.name.toLowerCase())) {
+            if (!members.some((member) => UserUtils.getNormalizedNick(member).toLowerCase() === dbUser.name.toLowerCase())) {
                 wrongNicks.push(dbUser.name);
             }
         })
@@ -298,13 +298,9 @@ export class Discord extends AbstractCommand {
             embed.addField('**Brakujące role:**', field, true);
         }
     }
-    static normalizeNick(nick: string): string {
-        return emojiStrip(nick).replace('☆', '').replace('★', '').trim()
-    }
 
     private isInGuild(member: GuildMember) {
-        let nick = Discord.normalizeNick(member.nickname ?? member.user.username);
-        return this.dbUsers.find(dbUser => dbUser.name === nick);
+        return this.dbUsers.find(dbUser => dbUser.name === UserUtils.getNormalizedNick(member));
     }
 }
 

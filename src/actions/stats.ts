@@ -1,11 +1,10 @@
-import { AbstractCommand, OptionDefinition, UsageDefinition } from '../abstract-command';
-import { Message } from 'discord.js';
-import { Connection, createConnection, FieldInfo, MysqlError } from 'mysql';
-import moment, { Moment } from 'moment';
-import { FCBot } from '../FCBot';
-import { Color } from '../utils/color';
-import { changeEmptyToVal } from '../utils/util.functions';
+import {AbstractCommand, OptionDefinition, UsageDefinition} from '../abstract-command';
+import {Message} from 'discord.js';
+import moment from 'moment';
+import {Color} from '../utils/color';
+import {changeEmptyToVal} from '../utils/util.functions';
 import {Db} from "../db";
+import {EmbedUtils} from "../utils/embed-utils";
 
 const commandLineArgs = require("command-line-args");
 const HRNumbers = require('human-readable-numbers');
@@ -168,7 +167,7 @@ export class Stats extends AbstractCommand {
             });
             console.log(result);
 
-            const embed = FCBot.embed()
+            const embed = EmbedUtils.embed()
                 .setColor(Color.BLUE)
                 .setDescription(`\`\`\`${message}\`\`\``)
             ;
@@ -252,7 +251,7 @@ export class Stats extends AbstractCommand {
         minGpValue = changeEmptyToVal(minGpValue, 'Brak danych');
         maxGpProgress = changeEmptyToVal(maxGpProgress, 'Brak danych');
         minGpProgress = changeEmptyToVal(minGpProgress, 'Brak danych');
-        const embed = FCBot.embed()
+        const embed = EmbedUtils.embed()
             .setColor(Color.BLUE)
             .addField('**Najwyższe GP**', `${maxGpValue}`, true)
             .addField('**Najniższe GP**', `${minGpValue}`, true)

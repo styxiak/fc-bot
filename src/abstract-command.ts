@@ -2,6 +2,7 @@ import { Command } from './command';
 import { Message } from "discord.js";
 import { FCBot } from './FCBot';
 import { Color } from './utils/color';
+import {EmbedUtils} from "./utils/embed-utils";
 
 
 export interface OptionDefinition {
@@ -47,7 +48,7 @@ export abstract class AbstractCommand implements Command {
     }
 
     protected prepareUsage() {
-        const embed = FCBot.embed();
+        const embed = EmbedUtils.embed();
         let title = `Pomoc dla komendy **!${this.prefix}**`;
         if (this.subcommand) {
             title += ` **${this.subcommand}**`;
@@ -89,7 +90,7 @@ export abstract class AbstractCommand implements Command {
     }
 
     error(message: string) {
-        const embed = FCBot.embed()
+        const embed = EmbedUtils.embed()
             .setDescription(message)
             .setColor(Color.RED)
         ;

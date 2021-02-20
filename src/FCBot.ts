@@ -1,21 +1,20 @@
 import {Client, Discord, On} from '@typeit/discord';
-import {ClientUser, Intents, Message, MessageEmbed, TextChannel} from 'discord.js';
+import {ClientUser, Guild as DiscordGuild, GuildMember, Intents, Message, MessageEmbed, TextChannel} from 'discord.js';
 import {Pong} from './actions/pong';
 import {Mention} from './actions/mention';
-
-import {Color} from './utils/color';
 import {Embed} from './actions/embed';
 import {Help} from './actions/help';
-import {Abs} from './actions/abs';
 import {Stats} from './actions/stats';
 import {Covid} from './actions/covid';
 import {Discord as DiscordCommand} from './actions/discord';
 import {Officer} from "./actions/officer";
-import {Guild} from "./actions/guild";
-import {RosterWatcher} from "./actions/roster-watcher";
 import {CHANNEL_LOG} from "./types/channel";
-
-const cron = require("node-cron");
+import {Test} from "./actions/test";
+import {Gl} from "./actions/gl";
+import {Guild} from "./actions/guild";
+import {EmbedUtils} from "./utils/embed-utils";
+import {Color} from "./utils/color";
+import {UserUtils} from "./utils/user-utils";
 
 @Discord
 export abstract class FCBot {
@@ -25,23 +24,20 @@ export abstract class FCBot {
     private commandNotFoundMessage: string = "command not found...";
 
     static start() {
-        this.client = new Client({ws: {intents: Intents.ALL}});
-        this.client.login(
+        FCBot.client = new Client({ws: {intents: Intents.ALL}});
+        return this.client.login(
             process.env.BOT_TOKEN as string,
             `${__dirname}/*Discord.ts` // glob string to load the classes
         );
-        // cron.schedule('* * * * *', function() {
-        //     console.log('running a task every minute');
-        //     FCBot.client.channels.fetch(channel).then((channel) => (channel as TextChannel).send('Cron'));
-        // });
-        let cronConfig = {
-            timezone: 'Europe/Warsaw',
-        };
-        cron.schedule('6 6 * * *', function() {
-            console.log('Run daily check');
-            let rosterWatcher = new RosterWatcher();
-            rosterWatcher.checkDaily();
-        }, cronConfig);
+    }
+
+    @On('guildMemberRemove')
+    async onRemove(member: GuildMember) {
+        let embed = EmbedUtils.embed();
+        embed
+            .setTitle('Informacja')
+            .setDescription(`**${UserUtils.getNormalizedNick(member)}** opuścił nasz serwer`);
+        FCBot.postLog(embed);
     }
 
     @On("message")
@@ -68,10 +64,6 @@ export abstract class FCBot {
                     break;
                 case "embed":
                     command = new Embed(message);
-                    command.execute();
-                    break;
-                case "abs":
-                    command = new Abs(message);
                     command.execute();
                     break;
                 case "stats":
@@ -104,9 +96,13 @@ export abstract class FCBot {
                     command = new Guild(message);
                     command.execute();
                     break;
+                case 'gl':
+                    command = new Gl();
+                    command.execute();
+                    break;
                 case 'test':
-                    command = new RosterWatcher();
-                    command.checkDaily();
+                case 't':
+                    Test.execute(message);
                     break;
                 default:
                     message.reply(this.commandNotFoundMessage);
@@ -120,20 +116,13 @@ export abstract class FCBot {
 
     }
 
-    static embed() : MessageEmbed {
-        let user = FCBot.client.user as ClientUser;
-        return new MessageEmbed()
-            .setAuthor('D-O', user.displayAvatarURL(), 'https://github.com/styxiak/fc-bot')
-            .setThumbnail('http://chuchmala.pl/static/bio_hazard.png')
-            .setTimestamp()
-            .setColor(Color.DEFAULT)
-            .setFooter('D-O -.. -....- ---', 'http://chuchmala.pl/static/final-countdown/fc-icon.png');
-    }
-
     static postLog(message: string|MessageEmbed) {
         FCBot.client.channels
-            .fetch(CHANNEL_LOG).then((channel) => (channel as TextChannel)
-            .send(message));
+            .fetch(CHANNEL_LOG).then((channel) => (channel as TextChannel).send(message));
+    }
+
+    static getGuild(): DiscordGuild {
+        return FCBot.client.guilds.cache.get('409376390308167682') as DiscordGuild;
     }
 
 }

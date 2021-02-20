@@ -1,0 +1,6 @@
+export const UNIT_GAS = 'GENERALSKYWALKER';
+export const UNIT_JKLS = 'JEDIKNIGHTLUKE';
+export const UNIT_JMLS = 'GRANDMASTERLUKE';
+export const UNIT_REY = 'GLREY';
+export const UNIT_SEE = 'SITHPALPATINE';
+export const UNIT_SLKR = 'SUPREMELEADERKYLOREN';

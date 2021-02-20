@@ -17,6 +17,7 @@ import {
     ROLE_RETIRED
 } from "../types/role";
 import {CHANNEL_LOG} from "../types/channel";
+import {EmbedUtils} from "../utils/embed-utils";
 
 
 export class Guild extends AbstractCommand {
@@ -215,7 +216,7 @@ export class Guild extends AbstractCommand {
     }
 
     showUsage() {
-        const embed = FCBot.embed();
+        const embed = EmbedUtils.embed();
         embed.addField('__**Dostępne komendy**__',
             '**enlist** - dodanie do gildii\n' +
             '**promote** - promocja na oficera\n' +

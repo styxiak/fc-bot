@@ -5,6 +5,7 @@ import {Interface} from "readline";
 import {FCBot} from "../FCBot";
 import {values} from "node-persist";
 import {Db} from "../db";
+import {EmbedUtils} from "../utils/embed-utils";
 
 const commandLineArgs = require("command-line-args");
 
@@ -113,7 +114,7 @@ export class Officer extends AbstractCommand {
 
     private async list() {
         let officers: OfficerDTO[] = await this.getOfficers();
-        let embed = FCBot.embed();
+        let embed = EmbedUtils.embed();
         let field = '';
         officers.forEach(officer => {
             field += `${officer.name}\n`

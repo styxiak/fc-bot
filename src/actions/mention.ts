@@ -364,7 +364,7 @@ export class Mention extends AbstractCommand {
                 // console.log('readed from storage: config', config, 'mentions:', userMentions);
 
                 let member = this.message.member as GuildMember;
-                console.log(member);
+                // console.log(member);
                 let userIndex: string = member.id;
                 config.mentions.forEach((mention) => {
                     if (this.message.content.indexOf(mention) < 0) {

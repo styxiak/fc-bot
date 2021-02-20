@@ -2,6 +2,7 @@ import {GuildMember, Message} from 'discord.js';
 import { Color } from '../utils/color';
 import { AbstractCommand, OptionDefinition, UsageDefinition } from '../abstract-command';
 import { FCBot } from '../FCBot';
+import {EmbedUtils} from "../utils/embed-utils";
 
 const commandLineArgs = require("command-line-args");
 
@@ -107,7 +108,7 @@ export class Embed extends AbstractCommand {
             }
         }
 
-        const embed = FCBot.embed();
+        const embed = EmbedUtils.embed();
         let indexAnonType = this.options.type as string;
         console.log(indexAnonType);
         console.log(anonTypes);

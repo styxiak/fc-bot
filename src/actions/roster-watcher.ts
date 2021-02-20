@@ -2,6 +2,7 @@ import moment from "moment";
 import {Db} from "../db";
 import {FCBot} from "../FCBot";
 import {Color} from "../utils/color";
+import {EmbedUtils} from "../utils/embed-utils";
 
 export class RosterWatcher {
     private db: Db;
@@ -38,7 +39,7 @@ export class RosterWatcher {
 
 
         if (newPlayers.length > 0 || retiredPlayers.length > 0) {
-            let embed = FCBot.embed();
+            let embed = EmbedUtils.embed();
             embed.title = 'Zmienił się skład gildii'
 
             if (retiredPlayers.length > 0) {
@@ -94,7 +95,7 @@ and (today.name is null or yesterday.name is null)`
 
     private static sendMissigImportError(date: string)
     {
-        let embed = FCBot.embed();
+        let embed = EmbedUtils.embed();
         embed.setColor(Color.RED)
             .setTitle('Brak imporu')
             .setDescription(`Nie znalazłem importu z dnia **${date}**`);
