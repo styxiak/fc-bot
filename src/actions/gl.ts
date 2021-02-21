@@ -54,10 +54,12 @@ export class Gl  {
             });
         }
 
-        let embed = EmbedUtils.embed();
-        let message = addedRoles.join('\n');
-        embed.setDescription(message);
-        FCBot.postLog(embed);
+        if (addedRoles.length > 0) {
+            let embed = EmbedUtils.embed();
+            let message = addedRoles.join('\n');
+            embed.setDescription(message);
+            FCBot.postLog(embed);
+        }
     }
 
 }
