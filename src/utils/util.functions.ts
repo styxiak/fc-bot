@@ -12,3 +12,9 @@ export function changeEmptyToVal(value: string, result = ' '): string {
     return value;
 
 }
+
+export function enumToString(enumObject: any) {
+    return (Object.values(enumObject).filter(value => typeof value === 'string') as string[])
+        .map((val) => `${val}`)
+        .join(', ');
+}

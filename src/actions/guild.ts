@@ -35,7 +35,7 @@ export class Guild extends AbstractCommand {
         this.parseOptions();
     }
 
-    private parseOptions() {
+    protected parseOptions() {
         let messageContent = this.message.content.trim();
         this.command = messageContent.split(' ')[0].replace(FCBot.prefix, '').toLowerCase();
         this.commandUser = this.message.member;
@@ -46,14 +46,7 @@ export class Guild extends AbstractCommand {
     }
 
     execute() {
-
-        if(!(this.commandUser as GuildMember).roles.cache.some(r => [ROLE_OFFICER, ROLE_LEADER, ROLE_ADMIN].includes(r.id)) ) {
-            this.message.reply(`Nie masz uprawnień by używać tej komendy`);
-            return;
-        }
-
-        if (this.command !== 'guild' && !this.member) {
-            this.message.reply(`Brakuje informacji, komu chcesz zmienić role`);
+        if (this.cantBeExecuted()) {
             return;
         }
 
@@ -79,6 +72,19 @@ export class Guild extends AbstractCommand {
         }
     }
 
+    private cantBeExecuted(): boolean {
+        if(!(this.commandUser as GuildMember).roles.cache.some(r => [ROLE_OFFICER, ROLE_LEADER, ROLE_ADMIN].includes(r.id)) ) {
+            this.message.reply(`Nie masz uprawnień by używać tej komendy`);
+            return false;
+        }
+
+        if (this.command !== 'guild' && !this.member) {
+            this.message.reply(`Brakuje informacji, komu chcesz zmienić role`);
+            return false;
+        }
+
+        return true;
+    }
     /**
      - enlist (+guild, +member)
      */

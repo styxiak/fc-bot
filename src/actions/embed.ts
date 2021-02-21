@@ -3,6 +3,7 @@ import { Color } from '../utils/color';
 import { AbstractCommand, OptionDefinition, UsageDefinition } from '../abstract-command';
 import { FCBot } from '../FCBot';
 import {EmbedUtils} from "../utils/embed-utils";
+import {enumToString} from "../utils/util.functions";
 
 const commandLineArgs = require("command-line-args");
 
@@ -22,74 +23,39 @@ const anonTypes: { [key: string]: Color } = {
 export class Embed extends AbstractCommand {
 
     protected readonly prefix = 'embed';
-    protected readonly optionsDefinition: OptionDefinition[];
-    protected readonly usageDefinition: UsageDefinition[];
+    protected optionsDefinition: OptionDefinition[] = [
+        {
+            name: 'help',
+            alias: 'h',
+            type: Boolean,
+            description: 'Pomoc'
+        },
+        {
+            name: 'type',
+            alias: 't',
+            type: String,
+            description: 'Poprawne wartości: default, warning, success',
+            typeLabel: '__type__',
+        }
+    ];
+    protected readonly usageDefinition: UsageDefinition[] = [
+        {
+            header: 'xxx',
+            description: 'Komenda pozwala na zamieszczanie ładnych ogłoszeń.'
+        },
+        {
+            header: 'Przykład',
+            content: '```!embed --type warning -- Tekst, który chcemy zaby pojawił się w ogłoszeniu. Musi on być poprzedzony znakami --.```'
+        },
+        {
+            header: 'Opcje',
+            optionList: this.optionsDefinition
+        }
+    ];
 
     constructor(message: Message) {
         super(message);
-        console.log('constructor:');
-
-        let validTypesString = (Object.values(ValidTypes).filter(value => typeof value === 'string') as string[]).map((val) => `${val}`).join(', ');
-        this.optionsDefinition = [
-            {
-                name: 'help',
-                alias: 'h',
-                type: Boolean,
-                description: 'Show help'
-            },
-            {
-                name: 'type',
-                alias: 't',
-                type: String,
-                description: 'Valid types: ' + validTypesString,
-                typeLabel: '__type__',
-            }
-        ];
-
-        this.usageDefinition = [
-            {
-                header: 'This will not be shown',
-                description: 'Jakiś opis'
-            },
-            {
-                header: 'Typical Example',
-                content: '```!embed --type warning -- Some text to show aa announcement. It can be multiline.```'
-            },
-            {
-                header: 'Options',
-                optionList: this.optionsDefinition
-            },
-            {
-                header: 'Additional',
-                content: 'Project home: __https://github.com/me/example__'
-            }
-        ];
         this.parseOptions();
-
-    }
-
-    //todo rozbić na dwie jeśli są tylko parametry lub jest subkomnedda i przenieść do abstract
-    private parseOptions() {
-        console.log('parseOptions:');
-        let messageContent = this.message.content.trim();
-        if (messageContent === `!${this.prefix}`) {
-            messageContent += ' -h';
-        }
-        let forPrase = messageContent.replace(`!${this.prefix}`, '').trim();
-        console.log(' forParse: ', forPrase);
-        let argv = forPrase.split(' ');
-        let regex = new RegExp(`!${this.prefix}(.*)-- `);
-        this.textMessage = messageContent.replace(regex, '').trim();
-        this.options = commandLineArgs(
-            this.optionsDefinition, {
-                argv: argv,
-                partial: true,
-                stopAtFirstUnknown: true,
-                camelCase: true
-            });
-
-        console.log(' this.options', this.options);
-        console.log(' this.textMessage', this.textMessage);
     }
 
     execute(): void {

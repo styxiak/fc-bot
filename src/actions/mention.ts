@@ -258,7 +258,7 @@ export class Mention extends AbstractCommand {
     }
 
     //todo rozbić na dwie jeśli są tylko parametry lub jest subkomnedda i przenieść do abstract
-    private parseOptions() {
+    protected parseOptions() {
         let messageContent = this.message.content.trim();
         let usedPrefix = messageContent.split(' ')[0];
         if (messageContent === `${usedPrefix}`) {

@@ -1,25 +1,16 @@
 import {AbstractCommand, OptionDefinition, UsageDefinition} from "../abstract-command";
-import {Channel, Collection, Guild, GuildMember, Message, MessageEmbed, Snowflake} from "discord.js";
-import {Connection, createConnection, MysqlError} from "mysql";
+import {Collection, GuildMember, Message, MessageEmbed, Snowflake} from "discord.js";
 import {FCBot} from "../FCBot";
 import {ROLE_ECHO_ADMIN, ROLE_ECHO_COMMANDER, ROLE_GUILD, ROLE_MEMBER, ROLE_OFFICER} from "../types/role";
 import {UserUtils} from "../utils/user-utils";
 import {EmbedUtils} from "../utils/embed-utils";
-
-const commandLineArgs = require("command-line-args");
+import {Db} from "../db";
+import {DbUtils} from "../utils/db-utils";
 
 export class Discord extends AbstractCommand {
 
     protected prefix = 'discord';
     protected optionsDefinition: OptionDefinition[] = [
-        {
-            name: 'type',
-            type: String,
-            alias: 'c',
-            description: 'Type',
-            typeLabel: '__type__',
-            defaultOption: true,
-        },
         {
             name: 'help',
             type: Boolean,
@@ -27,99 +18,42 @@ export class Discord extends AbstractCommand {
             description: 'Pomoc'
         }
     ]
-
     protected usageDefinition: UsageDefinition[] = [
         {
             header: 'x',
-            description: "Porządki na discordzie"
+            description: 'Porządki na discordzie'
         },
-        {
-            header: "Opcje",
-            optionList: this.optionsDefinition
-        }
     ];
 
-    protected mysqlConn: Connection;
     private dbUsers: any[] = [];
+    private db: Db;
 
     constructor(message: Message) {
         super(message);
         this.parseOptions();
-        let connectionUri = {
-            host: process.env.MYSQL_HOST,
-            user: process.env.MYSQL_USER,
-            password: process.env.MYSQL_PASS,
-            database: process.env.MYSQL_DB,
-            multipleStatements: true
-        };
-        this.mysqlConn = createConnection(connectionUri);
-        this.mysqlConn.connect((err) => {
-            if (err) {
-                console.error('error connecting: ' + err.stack);
-                return;
-            }
-            console.log('connected as id ', this.mysqlConn.threadId);
-        });
+        this.db = new Db();
     }
 
-    private parseOptions() {
-        console.log('parseOptions:');
-        let messageContent = this.message.content.trim();
-        let usedPrefix = messageContent.split(' ')[0];
-        let forPrase = messageContent.replace(`${usedPrefix}`, '').trim();
-        console.log(' forParse: ', forPrase);
-        let argv = forPrase.split(' ');
-        let options = commandLineArgs(
-            this.optionsDefinition, {
-                argv: argv,
-                partial: true,
-                stopAtFirstUnknown: true,
-                camelCase: true
-            });
-        this.options = options;
-        console.log(' options', options);
-
-        console.log(' this.options', this.options);
-        console.log(' this.textMessage', this.textMessage);
-    }
 
     execute(): void {
+        if (this.options.help) {
+            this.showUsage();
+            return;
+        }
+
         this.checkUsers();
     }
 
-    checkUsers() {
+    async checkUsers() {
         let dbUsers: any[];
-        dbUsers = [];
-        let query = "SELECT import_id from player_data order by import_id LIMIT 1";
-        this.mysqlConn.query(query)
-            .on('result', (data: any) => {
-                console.log(data);
-                query = `SELECT * from player_data where import_id ='${data.import_id}'`;
-                this.mysqlConn.query(query)
-                    .on('result', (data: any) => {
-                        console.log(data);
-                        dbUsers.push(data);
-                    })
-                    .on('error', (err: MysqlError) => {
-                        this.error(err.message);
-                    })
-                    .on('end', () => {
-                        this.dbUsers = dbUsers;
-                        this.parseUsers(dbUsers);
-                    });
-            })
-            .on('error', (err: MysqlError) => {
-                this.error(err.message);
-            })
-            .on('end', () => {
-            })
-        ;
+        let importId = await DbUtils.getLastImportId();
+        let query = 'SELECT * from player_data where import_id = ?';
+        this.dbUsers = await this.db.asyncQuery(query, [importId]);
+        this.parseUsers();
     }
 
-    private parseUsers(dbUsers: any[]) {
-        let guild = FCBot.client.guilds.cache.get('409376390308167682') as Guild;
-        console.log(guild.memberCount);
-        let chatChannel = FCBot.client.channels.cache.get('409376390753026063') as Channel;
+    private parseUsers() {
+        let guild = FCBot.getGuild();
         let wrongNicks: string[] = [];
         let extraRoles: BadRole[];
         let missingRoles: BadRole[];
@@ -168,7 +102,6 @@ export class Discord extends AbstractCommand {
     private checkExtraRoles(members: Collection<Snowflake, GuildMember>): BadRole[] {
         let badRoles: BadRole[] = [];
         members.forEach(member => {
-            console.log(member.nickname ?? member.user.username, this.isInGuild(member));
             let user = this.isInGuild(member);
             let roles: string[] = [];
             if (!user) {

@@ -4,6 +4,8 @@ import { FCBot } from './FCBot';
 import { Color } from './utils/color';
 import {EmbedUtils} from "./utils/embed-utils";
 
+const commandLineArgs = require("command-line-args");
+
 
 export interface OptionDefinition {
     name: string;
@@ -32,14 +34,36 @@ export abstract class AbstractCommand implements Command {
     protected message: Message;
     protected textMessage: string = '';
     protected options: any = {};
-
-
     protected subcommand: string = '';
 
     abstract execute(): void;
 
-    protected constructor(message: Message) {
+    constructor(message: Message) {
         this.message = message;
+    }
+
+    protected parseOptions() {
+        console.log(this.optionsDefinition);
+        console.log('parseOptions:');
+        let messageContent = this.message.content.trim();
+        let usedPrefix = messageContent.split(' ')[0];
+        let forPrase = messageContent.replace(`${usedPrefix}`, '').trim();
+        console.log(' forParse: ', forPrase);
+        let argv = forPrase.split(' ');
+        let regex = new RegExp(`!${this.prefix}(.*)-- `);
+        this.textMessage = messageContent.replace(regex, '').trim();
+        let options = commandLineArgs(
+            this.optionsDefinition, {
+                argv: argv,
+                partial: true,
+                stopAtFirstUnknown: true,
+                camelCase: true
+            });
+        this.options = options;
+        console.log(' options', options);
+
+        console.log(' this.options', this.options);
+        console.log(' this.textMessage', this.textMessage);
     }
 
     showUsage() {

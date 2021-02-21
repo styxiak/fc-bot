@@ -6,7 +6,6 @@ import {changeEmptyToVal} from '../utils/util.functions';
 import {Db} from "../db";
 import {EmbedUtils} from "../utils/embed-utils";
 
-const commandLineArgs = require("command-line-args");
 const HRNumbers = require('human-readable-numbers');
 
 export class Stats extends AbstractCommand {
@@ -52,7 +51,7 @@ export class Stats extends AbstractCommand {
     protected usageDefinition: UsageDefinition[] = [
         {
             header: 'x',
-            description: "Pokazuje statystyki członkóœ gildii."
+            description: "Pokazuje statystyki członków gildii."
         },
         {
             header: "Opcje",
@@ -72,75 +71,13 @@ export class Stats extends AbstractCommand {
 
         this.db = new Db();
         this.parseOptions();
-    }
-
-
-    //todo rozbić na dwie jeśli są tylko parametry lub jest subkomnedda i przenieść do abstract
-    private parseOptions() {
-        console.log('parseOptions:');
-        let messageContent = this.message.content.trim();
-        let usedPrefix = messageContent.split(' ')[0];
-        if (messageContent === `${usedPrefix}`) {
-            messageContent += ' -h';
-        }
-        let forPrase = messageContent.replace(`${usedPrefix}`, '').trim();
-        console.log(' forParse: ', forPrase);
-        let argv = forPrase.split(' ');
-        let regex = new RegExp(`/!${this.prefix}(.*)-- /`);
-        this.textMessage = messageContent.replace(regex, '').trim();
-
-        let options = commandLineArgs(
-            this.optionsDefinition, {
-                argv: argv,
-                partial: true,
-                stopAtFirstUnknown: true,
-                camelCase: true
-            });
-        this.options = options;
-        argv = options._unknown || [];
-        console.log(' options', options);
-
-        if (options.command) {
-            this.subcommand = options.command;
-
-            let subcommandDefinition: any[] = [];
-            this.options = commandLineArgs(
-                subcommandDefinition, {
-                    argv: argv,
-                    partial: true,
-                    stopAtFirstUnknown: true,
-                    camelCase: true
-                });
-            if (options.help) {
-                this.options.help = options.help;
-            }
-
-        }
-        if (!this.options.period) {
-            this.options.period = 'month';
-        }
-
-        console.log(' this.options', this.options);
-        console.log(' this.textMessage', this.textMessage);
+        this.setDefaultOptions();
     }
 
     execute(): void {
-        console.log('execute:');
-        console.log(' this.options.help', this.options.help);
-        if (this.options.help) {
-            this.showUsage();
+        if (this.cantBeExecuted()) {
             return;
         }
-
-        if (this.acceptedTypes.indexOf(this.options.type) < 0) {
-            this.showUsage();
-            return;
-        }
-
-        if (!this.options.count) {
-            this.options.count = 3;
-        }
-
 
         switch (this.options.type) {
             case 'gp':
@@ -150,6 +87,26 @@ export class Stats extends AbstractCommand {
                 this.guildStats();
         }
 
+    }
+
+    private setDefaultOptions() {
+        if (!this.options.count) {
+            this.options.count = 3;
+        }
+    }
+
+    private cantBeExecuted(): boolean {
+        if (this.options.help) {
+            this.showUsage();
+            return false;
+        }
+
+        if (this.acceptedTypes.indexOf(this.options.type) < 0) {
+            this.showUsage();
+            return false;
+        }
+
+        return true;
     }
 
     gpStats() {

@@ -45,28 +45,6 @@ export class Covid extends AbstractCommand {
         this.parseOptions();
     }
 
-    //todo rozbić na dwie jeśli są tylko parametry lub jest subkomnedda i przenieść do abstract
-    private parseOptions() {
-        console.log('parseOptions:');
-        let messageContent = this.message.content.trim();
-        let usedPrefix = messageContent.split(' ')[0];
-        let forPrase = messageContent.replace(`${usedPrefix}`, '').trim();
-        console.log(' forParse: ', forPrase);
-        let argv = forPrase.split(' ');
-        let options = commandLineArgs(
-            this.optionsDefinition, {
-                argv: argv,
-                partial: true,
-                stopAtFirstUnknown: true,
-                camelCase: true
-            });
-        this.options = options;
-        console.log(' options', options);
-
-        console.log(' this.options', this.options);
-        console.log(' this.textMessage', this.textMessage);
-    }
-
     execute(): void {
         console.log('execute:');
         console.log(' this.options.help', this.options.help);

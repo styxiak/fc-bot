@@ -1,5 +1,5 @@
 import {Client, Discord, On} from '@typeit/discord';
-import {ClientUser, Guild as DiscordGuild, GuildMember, Intents, Message, MessageEmbed, TextChannel} from 'discord.js';
+import {ClientUser, Guild as DiscordGuild, Intents, Message, MessageEmbed, TextChannel} from 'discord.js';
 import {Pong} from './actions/pong';
 import {Mention} from './actions/mention';
 import {Embed} from './actions/embed';
@@ -7,14 +7,10 @@ import {Help} from './actions/help';
 import {Stats} from './actions/stats';
 import {Covid} from './actions/covid';
 import {Discord as DiscordCommand} from './actions/discord';
-import {Officer} from "./actions/officer";
 import {CHANNEL_LOG} from "./types/channel";
 import {Test} from "./actions/test";
 import {Gl} from "./actions/gl";
 import {Guild} from "./actions/guild";
-import {EmbedUtils} from "./utils/embed-utils";
-import {Color} from "./utils/color";
-import {UserUtils} from "./utils/user-utils";
 
 @Discord
 export abstract class FCBot {
@@ -29,15 +25,6 @@ export abstract class FCBot {
             process.env.BOT_TOKEN as string,
             `${__dirname}/*Discord.ts` // glob string to load the classes
         );
-    }
-
-    @On('guildMemberRemove')
-    async onRemove(member: GuildMember) {
-        let embed = EmbedUtils.embed();
-        embed
-            .setTitle('Informacja')
-            .setDescription(`**${UserUtils.getNormalizedNick(member)}** opuścił nasz serwer`);
-        FCBot.postLog(embed);
     }
 
     @On("message")
@@ -77,10 +64,6 @@ export abstract class FCBot {
                 case "d":
                 case "discord":
                     command = new DiscordCommand(message);
-                    command.execute();
-                    break;
-                case 'officer':
-                    command = new Officer(message);
                     command.execute();
                     break;
                 case "help":
