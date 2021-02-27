@@ -2,7 +2,7 @@ import {GuildMember, Message, MessageEmbed, Role} from "discord.js";
 import storage from 'node-persist';
 import NodePersist from 'node-persist';
 import moment, { Moment } from 'moment';
-import { AbstractCommand, OptionDefinition, UsageDefinition } from '../abstract-command';
+import {AbstractCommand, OptionDefinition, SubOptionDefinition, UsageDefinition} from '../abstract-command';
 
 const commandLineArgs = require("command-line-args");
 
@@ -55,7 +55,7 @@ export class Mention extends AbstractCommand {
             description: 'Pomoc'
         },
     ];
-    protected readonly commandOptionsDefinition = {
+    protected readonly commandOptionsDefinition: SubOptionDefinition = {
         add: [
             {
                 name: 'mention',
@@ -281,20 +281,9 @@ export class Mention extends AbstractCommand {
 
         this.subcommand = options.command;
 
-        let subcommandDefinition: any[] = [];
-        switch(this.subcommand) {
-            case 'add':
-                subcommandDefinition = this.commandOptionsDefinition['add'];
-                break;
-            case 'del':
-                subcommandDefinition = this.commandOptionsDefinition['del'];
-                break;
-            case 'set':
-                subcommandDefinition = this.commandOptionsDefinition['set'];
-                break;
-            default:
-                //todo wymusić help
-        }
+        let subcommandDefinition: OptionDefinition[];
+        //todo check if index exist;
+        subcommandDefinition = this.commandOptionsDefinition[this.subcommand];
 
         this.options = commandLineArgs(
             subcommandDefinition, {
@@ -362,7 +351,10 @@ export class Mention extends AbstractCommand {
         Promise.all([this.config$, this.mentions$])
             .then(([config, userMentions]) => {
                 // console.log('readed from storage: config', config, 'mentions:', userMentions);
-
+                // Can be null when not member post on channel like #data-mine
+                if (null === this.message.member) {
+                    return;
+                }
                 let member = this.message.member as GuildMember;
                 // console.log(member);
                 let userIndex: string = member.id;

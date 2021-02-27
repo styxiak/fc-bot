@@ -6,7 +6,6 @@ import {EmbedUtils} from "./utils/embed-utils";
 
 const commandLineArgs = require("command-line-args");
 
-
 export interface OptionDefinition {
     name: string;
     alias?: string;
@@ -23,6 +22,10 @@ export interface UsageDefinition {
     header: string;
     content?: string;
     optionList?: OptionDefinition[];
+}
+
+export interface SubOptionDefinition {
+    [key: string]: OptionDefinition[];
 }
 
 export abstract class AbstractCommand implements Command {
@@ -60,8 +63,8 @@ export abstract class AbstractCommand implements Command {
                 camelCase: true
             });
         this.options = options;
-        console.log(' options', options);
 
+        console.log(' options', options);
         console.log(' this.options', this.options);
         console.log(' this.textMessage', this.textMessage);
     }

@@ -46,7 +46,7 @@ export class Guild extends AbstractCommand {
     }
 
     execute() {
-        if (this.cantBeExecuted()) {
+        if (!this.canBeExecuted()) {
             return;
         }
 
@@ -72,7 +72,7 @@ export class Guild extends AbstractCommand {
         }
     }
 
-    private cantBeExecuted(): boolean {
+    private canBeExecuted(): boolean {
         if(!(this.commandUser as GuildMember).roles.cache.some(r => [ROLE_OFFICER, ROLE_LEADER, ROLE_ADMIN].includes(r.id)) ) {
             this.message.reply(`Nie masz uprawnień by używać tej komendy`);
             return false;
