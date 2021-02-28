@@ -43,10 +43,13 @@ export class Gl  {
                 'LEFT JOIN unit u on pd.id = u.player_data_id\n' +
                 'where u.base_id = ? AND pd.import_id = ?;'
             let playersToCheck = await this.db.asyncQuery(glQuery, [glName, importId]);
+            console.log('PlayersToCheck', playersToCheck);
             playersToCheck.forEach((player:any) => {
                 let member = guild.members.cache.find(member => player.name === UserUtils.getNormalizedNick(member)) as GuildMember;
                 let roleId = this.mapping[glName];
+                console.log('check roleId', roleId);
                 if (!member.roles.cache.some(role => role.id === roleId)) {
+                    console.log(' don\'t have role, give it to him' );
                     member.roles.add(roleId).then(() => {
                         addedRoles.push(`Nadaję rolę dla **${glName}** użytkownikowi **${UserUtils.getNormalizedNick(member)}**`);
                     })
