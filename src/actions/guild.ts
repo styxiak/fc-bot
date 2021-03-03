@@ -28,7 +28,6 @@ export class Guild extends AbstractCommand {
 
     private member: GuildMember| null = null;
     private commandUser: GuildMember | null = null;
-    private command: string = '';
 
     constructor(message: Message) {
         super(message);

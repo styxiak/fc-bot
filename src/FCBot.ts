@@ -11,6 +11,8 @@ import {CHANNEL_LOG} from "./types/channel";
 import {Test} from "./actions/test";
 import {Gl} from "./actions/gl";
 import {Guild} from "./actions/guild";
+import {Cpit} from "./actions/cpit";
+import {REACT_ERROR, REACT_WAIT} from "./types/reactions";
 
 @Discord
 export abstract class FCBot {
@@ -36,7 +38,7 @@ export abstract class FCBot {
         let mentionCommand = new Mention(message);
         if (message.content[0] === FCBot.prefix) {
             let command;
-
+            await message.react(REACT_WAIT);
             const cmd = message.content.split(' ')[0].replace(FCBot.prefix, "").toLowerCase();
             console.log(`command in inMessage: ${cmd}`);
             switch (cmd) {
@@ -66,6 +68,13 @@ export abstract class FCBot {
                     command = new DiscordCommand(message);
                     command.execute();
                     break;
+                case 'cpit':
+                case 'a':
+                case 'add':
+                case 'del':
+                    command = new Cpit(message);
+                    command.execute();
+                    break;
                 case "help":
                     command = new Help(message);
                     command.execute();
@@ -88,6 +97,7 @@ export abstract class FCBot {
                     Test.execute(message);
                     break;
                 default:
+                    await message.react(REACT_ERROR);
                     message.reply(this.commandNotFoundMessage);
                     break;
             }

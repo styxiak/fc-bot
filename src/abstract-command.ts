@@ -3,6 +3,7 @@ import { Message } from "discord.js";
 import { FCBot } from './FCBot';
 import { Color } from './utils/color';
 import {EmbedUtils} from "./utils/embed-utils";
+import {REACT_ERROR, REACT_OK} from "./types/reactions";
 
 const commandLineArgs = require("command-line-args");
 
@@ -38,6 +39,7 @@ export abstract class AbstractCommand implements Command {
     protected textMessage: string = '';
     protected options: any = {};
     protected subcommand: string = '';
+    protected command: string = '';
 
     abstract execute(): void;
 
@@ -45,13 +47,21 @@ export abstract class AbstractCommand implements Command {
         this.message = message;
     }
 
-    protected parseOptions() {
+    protected parseOptions(messageContent?: string) {
         console.log(this.optionsDefinition);
         console.log('parseOptions:');
-        let messageContent = this.message.content.trim();
-        let usedPrefix = messageContent.split(' ')[0];
+        if (!messageContent) {
+            messageContent = this.message.content.trim();
+        }
+        let splittedMessage = messageContent.split(' ');
+        let usedPrefix = splittedMessage[0];
         let forPrase = messageContent.replace(`${usedPrefix}`, '').trim();
         console.log(' forParse: ', forPrase);
+        this.command = splittedMessage[0].replace(FCBot.prefix, '').toLowerCase();
+        if (splittedMessage.length > 1) {
+            this.subcommand = splittedMessage[1].toLowerCase();
+        }
+
         let argv = forPrase.split(' ');
         let regex = new RegExp(`!${this.prefix}(.*)-- `);
         this.textMessage = messageContent.replace(regex, '').trim();
@@ -122,5 +132,21 @@ export abstract class AbstractCommand implements Command {
             .setColor(Color.RED)
         ;
         this.message.channel.send(embed);
+    }
+
+    async replyError(message?: string) {
+        await this.message.react(REACT_ERROR);
+        if(message) {
+            this.message.reply(message);
+        }
+
+    }
+
+    async replaySuccess(message?: string) {
+        await this.message.react(REACT_OK);
+        if(message) {
+            this.message.reply(message);
+        }
+
     }
 }

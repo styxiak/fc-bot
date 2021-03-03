@@ -18,3 +18,34 @@ export function enumToString(enumObject: any) {
         .map((val) => `${val}`)
         .join(', ');
 }
+
+export function numberToLength(value: string, maxLength?: number, decimal?:number)
+{
+    if (!maxLength) {
+        maxLength = 6;
+    }
+    if (!decimal) {
+        decimal = 2;
+    }
+    let length = value.length;
+    let dotPosition = value.indexOf('.');
+    let dotFromEnd = length - dotPosition;
+    console.log(value, length, dotPosition, dotFromEnd);
+
+    //doklejamy z tyłu
+    let endCount = decimal+1;
+
+    if (length >= dotFromEnd) {
+        endCount = decimal - (dotFromEnd -1);
+    }
+    let padEnd = ''.padEnd(endCount);
+    value = value + padEnd;
+    value = value.padStart(maxLength);
+
+    console.log(value, endCount);
+    // if (dotPosition == 1) {
+    //     endCount = 1;
+    // } else if (dotPosition == )
+
+    return value;
+}
