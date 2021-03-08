@@ -7,7 +7,7 @@ import {Help} from './actions/help';
 import {Stats} from './actions/stats';
 import {Covid} from './actions/covid';
 import {Discord as DiscordCommand} from './actions/discord';
-import {CHANNEL_LOG} from "./types/channel";
+import {CHANNEL_ERROR_LOG, CHANNEL_LOG} from "./types/channel";
 import {Test} from "./actions/test";
 import {Gl} from "./actions/gl";
 import {Guild} from "./actions/guild";
@@ -112,6 +112,11 @@ export abstract class FCBot {
     static postLog(message: string|MessageEmbed) {
         FCBot.client.channels
             .fetch(CHANNEL_LOG).then((channel) => (channel as TextChannel).send(message));
+    }
+
+    static postError(message: string|MessageEmbed) {
+        FCBot.client.channels
+            .fetch(CHANNEL_ERROR_LOG).then((channel) => (channel as TextChannel).send(message));
     }
 
     static getGuild(): DiscordGuild {

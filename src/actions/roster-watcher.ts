@@ -99,7 +99,7 @@ and (today.name is null or yesterday.name is null)`
         embed.setColor(Color.RED)
             .setTitle('Brak imporu')
             .setDescription(`Nie znalazłem importu z dnia **${date}**`);
-        FCBot.postLog(embed);
+        FCBot.postError(embed);
     }
 
 }
