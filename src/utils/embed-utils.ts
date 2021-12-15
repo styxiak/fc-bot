@@ -10,7 +10,7 @@ export class EmbedUtils {
         let user = FCBot.client.user as ClientUser;
         return new MessageEmbed()
             .setAuthor('D-O', user.displayAvatarURL(), 'https://github.com/styxiak/fc-bot')
-            .setThumbnail('http://chuchmala.pl/static/bio_hazard.png')
+            .setThumbnail('https://chuchmala.pl/static/bio_hazard.png')
             .setTimestamp()
             .setColor(Color.DEFAULT)
             .setFooter('D-O -.. -....- ---', 'http://chuchmala.pl/static/final-countdown/fc-icon.png');

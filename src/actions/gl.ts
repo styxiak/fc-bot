@@ -46,6 +46,10 @@ export class Gl  {
             console.log('PlayersToCheck', playersToCheck);
             playersToCheck.forEach((player:any) => {
                 let member = guild.members.cache.find(member => player.name === UserUtils.getNormalizedNick(member)) as GuildMember;
+                if (!member) {
+                    FCBot.postError(`Can't find member for player name: ${player.name} `);
+                    return;
+                }
                 let roleId = this.mapping[glName];
                 console.log('check roleId', roleId);
                 if (!member.roles.cache.some(role => role.id === roleId)) {
